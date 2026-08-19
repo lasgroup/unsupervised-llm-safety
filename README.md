@@ -5,8 +5,6 @@ Safety Detection*.
 
 ![Per-cluster masks in the SAE feature space](docs/figure1.png)
 
-
-
 ## What is in this repository
 
 Nine anomaly-detection methods, all sharing one interface, one config system
@@ -38,6 +36,8 @@ register a new dataset or model, train an SAE, run a method, and read the
 results. Start there if you want to *use* this code.
 
 ```bash
+conda create -n unsupervised-llm-safety python=3.11 -y
+conda activate unsupervised-llm-safety
 pip install -e ".[all]"
 ```
 
@@ -64,7 +64,6 @@ tests/
 Everything in this repository is **MIT** (`LICENSE`).
 
 The per-sample scores under `reference_scores/scores/` were computed over
-upstream corpora that carry their own terms — BeaverTails and Alpaca are
-CC-BY-NC 4.0, ARC is CC-BY-SA 4.0 — so consult those before redistributing work
-derived from them. Representations, SAE encoders and fitted detectors are not
-released here.
+upstream corpora that carry their own terms. BeaverTails and Alpaca are
+CC-BY-NC 4.0 and ARC is CC-BY-SA 4.0, so consult those before redistributing
+work derived from them.
