@@ -50,12 +50,12 @@ from unsupervised_llm_safety.data.precompute_sae_encodings import (
 
 logger = logging.getLogger(__name__)
 
-# Where the offline k-means cache is written. Set ``SAP_CLUSTERING_CACHE`` to
+# Where the offline k-means cache is written. Set ``ULS_CLUSTERING_CACHE`` to
 # relocate it (it can grow to a few GB); unset, it sits beside the activations
-# under ``SAP_ACTIVATION_ROOT``.
+# under ``ULS_ACTIVATION_ROOT``.
 CLUSTERING_CACHE_BASE = Path(
     os.environ.get(
-        "SAP_CLUSTERING_CACHE", f"{ROOT_DATA_PATH}/clustering_cache"
+        "ULS_CLUSTERING_CACHE", f"{ROOT_DATA_PATH}/clustering_cache"
     )
 )
 

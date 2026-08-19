@@ -54,8 +54,8 @@ set -euo pipefail
 
 DATASET="toxigen"
 # Where the extracted files land. Point this at the same directory you set
-# SAP_ACTIVATION_ROOT to (default: ./activation_data next to this repo).
-BASE_OUTPUT_DIR="${SAP_ACTIVATION_ROOT:-activation_data}"
+# ULS_ACTIVATION_ROOT to (default: ./activation_data next to this repo).
+BASE_OUTPUT_DIR="${ULS_ACTIVATION_ROOT:-activation_data}"
 
 echo "Extracting ToxiGen activations for the 3 released models"
 echo "Output root: ${BASE_OUTPUT_DIR}"

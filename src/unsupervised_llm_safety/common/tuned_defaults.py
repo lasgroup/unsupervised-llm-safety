@@ -30,7 +30,7 @@ from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Set
 logger = logging.getLogger(__name__)
 
 #: Environment variable pointing at an alternative hyperparameter file.
-CONFIG_ENV_VAR = "SAP_TUNED_DEFAULTS"
+CONFIG_ENV_VAR = "ULS_TUNED_DEFAULTS"
 
 #: This file is at ``<repo>/src/unsupervised_llm_safety/common/``, so
 #: ``parents[3]`` is the repository root.

@@ -52,9 +52,9 @@ use_last_token: true  # If true, use per-turn last-token data
 use_generation: false  # If true, use per-token generation data for IID training
 use_complex_data: true  # If true, add safe OOD/ADV data to IID training
 # Set at runtime from dataset_registry.get_adversarial_base_path(), which is
-# rooted on $SAP_ACTIVATION_ROOT and redirected by $SAP_HARMBENCH_BASE.
+# rooted on $ULS_ACTIVATION_ROOT and redirected by $ULS_HARMBENCH_BASE.
 # anodet_utils.resolve_dataset_configurations() overwrites whatever is written
-# here, so point $SAP_HARMBENCH_BASE elsewhere rather than editing this key.
+# here, so point $ULS_HARMBENCH_BASE elsewhere rather than editing this key.
 adversarial_base_path: null
 attack_filter: null  # Optional: filter specific attacks
 layer: null  # Optional: specific layer for adversarial data

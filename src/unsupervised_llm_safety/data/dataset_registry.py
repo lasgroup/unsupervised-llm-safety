@@ -14,13 +14,13 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 # Global root data path for most datasets.
 #
-# Set ``SAP_ACTIVATION_ROOT`` to the directory holding the downloaded
+# Set ``ULS_ACTIVATION_ROOT`` to the directory holding the downloaded
 # activation bundle. Unset, it defaults to ``<repo>/activation_data``, which
 # is the default location for cached activations. Every
 # dataset path in this module is derived from this one root, so redirecting
 # it moves the whole registry.
 ROOT_DATA_PATH = os.environ.get(
-    "SAP_ACTIVATION_ROOT", str(_REPO_ROOT / "activation_data")
+    "ULS_ACTIVATION_ROOT", str(_REPO_ROOT / "activation_data")
 )
 
 # Default location of the HarmBench adversarial activation files.
@@ -29,36 +29,36 @@ DEFAULT_HARMBENCH_BASE_PATH = f"{ROOT_DATA_PATH}/harmbench/"
 # The four earliest models' BeaverTails hidden states were produced by a
 # sibling project and live outside ROOT_DATA_PATH, under a
 # ``<root>/<model-slug>/all_hidden_states*.pth`` layout. Set
-# ``SAP_BEAVERTAILS_HS_ROOT`` to point at that copy; unset, it is assumed to
+# ``ULS_BEAVERTAILS_HS_ROOT`` to point at that copy; unset, it is assumed to
 # have been placed under the activation root alongside everything else.
 BEAVER_TAILS_HS_ROOT = os.environ.get(
-    "SAP_BEAVERTAILS_HS_ROOT", f"{ROOT_DATA_PATH}/beaver_tails_hs"
+    "ULS_BEAVERTAILS_HS_ROOT", f"{ROOT_DATA_PATH}/beaver_tails_hs"
 )
 
 
 def get_harmbench_base_path() -> str:
     """Return the directory holding HarmBench activation files.
 
-    Set ``SAP_HARMBENCH_BASE`` to redirect BOTH the adversarial eval
+    Set ``ULS_HARMBENCH_BASE`` to redirect BOTH the adversarial eval
     slice and the HarmBench-safe rows that ``use_complex_data`` folds
     into IID training at a different copy of the data (for example a
     corrected-label copy on scratch). Unset, this is exactly the
     historical hard-coded path, so behaviour is unchanged.
     """
-    return os.environ.get("SAP_HARMBENCH_BASE", DEFAULT_HARMBENCH_BASE_PATH)
+    return os.environ.get("ULS_HARMBENCH_BASE", DEFAULT_HARMBENCH_BASE_PATH)
 
 
 def get_beaver_tails_complex_override(model_key: str) -> Optional[str]:
     """Return a replacement path for the BeaverTails-safe IID slice.
 
-    Set ``SAP_BEAVERTAILS_COMPLEX_OVERRIDE`` to a comma separated list of
+    Set ``ULS_BEAVERTAILS_COMPLEX_OVERRIDE`` to a comma separated list of
     ``model_key:/abs/path`` entries to point the ``use_complex_data``
     BeaverTails-safe rows at a different copy of the file (for example a
     text-level deduplicated copy on scratch). Only the complex-data IID
     slice is affected; the OOD/eval BeaverTails entry is untouched.
     Unset, this returns ``None`` and behaviour is unchanged.
     """
-    env = os.environ.get("SAP_BEAVERTAILS_COMPLEX_OVERRIDE", "")
+    env = os.environ.get("ULS_BEAVERTAILS_COMPLEX_OVERRIDE", "")
     if not env:
         return None
     for spec in env.split(","):
@@ -638,7 +638,7 @@ def get_complex_data_mode() -> bool:
 # the whole registry per layer, an opt-in override rewrites the layer
 # token (``_layer{canonical}`` -> ``_layer{L}``) in the paths returned by
 # ``get_dataset_paths`` and filters HarmBench discovery to that layer.
-# It is set through the ``SAP_LAYER_OVERRIDE`` env var
+# It is set through the ``ULS_LAYER_OVERRIDE`` env var
 # (``"model_key:layer"``, comma-separated for multiple) so it also
 # reaches SLURM subprocesses launched by the E5 driver.
 #
@@ -665,10 +665,10 @@ _CANONICAL_LAYER: Dict[str, int] = {
 def get_active_layer(model_key: str) -> Optional[int]:
     """Return the layer the registry resolves paths at for a model.
 
-    Precedence: ``SAP_LAYER_OVERRIDE`` env var > canonical layer.
+    Precedence: ``ULS_LAYER_OVERRIDE`` env var > canonical layer.
     Returns ``None`` for unknown models.
     """
-    env = os.environ.get("SAP_LAYER_OVERRIDE", "")
+    env = os.environ.get("ULS_LAYER_OVERRIDE", "")
     if env:
         for spec in env.split(","):
             spec = spec.strip()
@@ -920,7 +920,7 @@ def get_dataset_paths(
     if complex_data and dataset_type == "iid":
         if model_key in COMPLEX_DATA_BEAVER_TAILS:
             bt_entry = COMPLEX_DATA_BEAVER_TAILS[model_key]
-            # Honour the SAP_BEAVERTAILS_COMPLEX_OVERRIDE redirect
+            # Honour the ULS_BEAVERTAILS_COMPLEX_OVERRIDE redirect
             # (no-op when unset).
             bt_override = get_beaver_tails_complex_override(model_key)
             if bt_override:
@@ -959,7 +959,7 @@ def get_adversarial_base_path(
     configured = DATASET_PATHS[model_key].get("adversarial_base_path", None)
     if configured is None:
         return None
-    # Honour the SAP_HARMBENCH_BASE redirect (no-op when unset).
+    # Honour the ULS_HARMBENCH_BASE redirect (no-op when unset).
     if configured == DEFAULT_HARMBENCH_BASE_PATH:
         return get_harmbench_base_path()
     return configured

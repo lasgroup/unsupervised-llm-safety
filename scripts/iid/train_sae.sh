@@ -6,7 +6,7 @@
 # The FreqMask-KM, LearnedMask, CVDD-SAE, Local-FreqMask and BCE detectors all
 # operate in SAE feature space, not raw activation space. No trained encoders
 # are shipped with this code, so run this once per model before fitting any of
-# those detectors, and put the result where $SAP_SAE_ROOT can find it. You do
+# those detectors, and put the result where $ULS_SAE_ROOT can find it. You do
 # NOT need an encoder to reproduce the published table:
 # `reference_scores/compute_metrics.py` reads the per-sample scores shipped in
 # this repository and fits nothing.
@@ -14,15 +14,15 @@
 # WHAT IT PRODUCES
 # ----------------
 # `trained_model.pth` inside each Hydra run directory, under
-#   $SAP_OUTPUT_ROOT/multirun/iid/<date>/<exp_ident>-<time>/<idx>/
+#   $ULS_OUTPUT_ROOT/multirun/iid/<date>/<exp_ident>-<time>/<idx>/
 # That file is what you then pass as `anodet_algos.model_path=...`, or copy to
-# $SAP_SAE_ROOT/<model_key>__<variant>.pth so the resolver in
+# $ULS_SAE_ROOT/<model_key>__<variant>.pth so the resolver in
 # scripts/anodet_algos/run_baseline_experiments.py finds it.
 #
 # INPUT
 # -----
 # The IID activations for MODEL_KEY, as listed in
-# `unsupervised_llm_safety.data.dataset_registry`, rooted on $SAP_ACTIVATION_ROOT.
+# `unsupervised_llm_safety.data.dataset_registry`, rooted on $ULS_ACTIVATION_ROOT.
 # Nothing is downloaded here; if those files are absent the run fails loudly in
 # the loader. `use_last_token=true use_complex_data=true` is the setting every
 # published number uses.
@@ -56,8 +56,8 @@ MODEL_KEY="${1:-qwen3_8b}"
 EXP_IDENT="${2:-sae_${MODEL_KEY}_complex_data}"
 
 echo "Training SAE for ${MODEL_KEY}"
-echo "  activation root : ${SAP_ACTIVATION_ROOT:-<repo>/activation_data}"
-echo "  output root     : ${SAP_OUTPUT_ROOT:-./outputs}"
+echo "  activation root : ${ULS_ACTIVATION_ROOT:-<repo>/activation_data}"
+echo "  output root     : ${ULS_OUTPUT_ROOT:-./outputs}"
 echo "  exp_ident       : ${EXP_IDENT}"
 echo "=================================================="
 
@@ -84,4 +84,4 @@ echo "=================================================="
 echo "Done. Pick the grid point with the best reconstruction at your target"
 echo "L0 (results.json in each run dir), then either pass its trained_model.pth"
 echo "as anodet_algos.model_path=..., or copy it to"
-echo "  \${SAP_SAE_ROOT}/${MODEL_KEY}__both.pth"
+echo "  \${ULS_SAE_ROOT}/${MODEL_KEY}__both.pth"

@@ -111,7 +111,7 @@ def discover_adversarial_files(
             back to the model's active (canonical) layer rather than
             leaving the layer unconstrained -- see the note below.
         base_path: Base directory for harmbench data. Defaults to the
-            registry path, which honours the ``SAP_HARMBENCH_BASE``
+            registry path, which honours the ``ULS_HARMBENCH_BASE``
             environment override.
         strict: When True, raise ``FileNotFoundError`` instead of returning
             an empty dict if nothing matches. Use on evaluation paths, where
@@ -226,13 +226,13 @@ def discover_adversarial_files(
                 f"No adversarial files for model '{model_key}' at layer "
                 f"{layer} in {base_path}. The directory does hold this "
                 f"model at layer(s) {sorted(set(available))}. Pass an "
-                f"explicit `layer`, set SAP_LAYER_OVERRIDE, or point "
-                f"SAP_HARMBENCH_BASE at a directory carrying that layer."
+                f"explicit `layer`, set ULS_LAYER_OVERRIDE, or point "
+                f"ULS_HARMBENCH_BASE at a directory carrying that layer."
             )
         else:
             msg = (
                 f"No adversarial files at all for model '{model_key}' in "
-                f"{base_path} (pattern '{pattern}'). If SAP_HARMBENCH_BASE "
+                f"{base_path} (pattern '{pattern}'). If ULS_HARMBENCH_BASE "
                 f"is set, that directory likely does not cover this model."
             )
         if strict:

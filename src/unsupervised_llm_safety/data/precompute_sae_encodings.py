@@ -72,16 +72,16 @@ from unsupervised_llm_safety.data.dataset_registry import (
 
 logger = logging.getLogger(__name__)
 
-# Root of the released SAE checkpoints. Set ``SAP_SAE_ROOT`` to the ``saes/``
+# Root of the released SAE checkpoints. Set ``ULS_SAE_ROOT`` to the ``saes/``
 # directory of the downloaded artifact bundle; unset, it is assumed to sit
-# beside the activations under ``SAP_ACTIVATION_ROOT``.
+# beside the activations under ``ULS_ACTIVATION_ROOT``.
 #
 # Note on scope: the released bundle ships SAEs for the three models Table 1
 # covers, named ``<model_key>__<method>.pth`` (gpt_oss_20b needs two -- one per
 # method -- so there is no single file per model). The frozen encoders for the
 # three earlier models were never archived, so this table cannot point at
-# them; supply them explicitly with ``SAP_SAE_<MODEL_KEY>`` or ``--sae-path``.
-SAE_ROOT = os.environ.get("SAP_SAE_ROOT", f"{ROOT_DATA_PATH}/saes")
+# them; supply them explicitly with ``ULS_SAE_<MODEL_KEY>`` or ``--sae-path``.
+SAE_ROOT = os.environ.get("ULS_SAE_ROOT", f"{ROOT_DATA_PATH}/saes")
 
 MODEL_KEYS = ["qwen2_1.5b", "ministral_8b", "llama3_8b"]
 
@@ -89,10 +89,10 @@ MODEL_KEYS = ["qwen2_1.5b", "ministral_8b", "llama3_8b"]
 def _sae_path_for(model_key: str) -> str:
     """Resolve the frozen-encoder checkpoint for *model_key*.
 
-    Precedence: ``SAP_SAE_<MODEL_KEY>`` (uppercased, dots -> underscores),
-    then ``<SAP_SAE_ROOT>/<model_key>.pth``.
+    Precedence: ``ULS_SAE_<MODEL_KEY>`` (uppercased, dots -> underscores),
+    then ``<ULS_SAE_ROOT>/<model_key>.pth``.
     """
-    env_key = "SAP_SAE_" + model_key.upper().replace(".", "_")
+    env_key = "ULS_SAE_" + model_key.upper().replace(".", "_")
     override = os.environ.get(env_key)
     if override:
         return override
@@ -103,7 +103,7 @@ class _SaePathTable(Dict[str, str]):
     """Mapping view over :func:`_sae_path_for`, resolved on each lookup.
 
     Kept dict-shaped because call sites subscript it directly, but resolved
-    lazily so that setting ``SAP_SAE_ROOT`` after import still takes effect.
+    lazily so that setting ``ULS_SAE_ROOT`` after import still takes effect.
     """
 
     def __getitem__(self, model_key: str) -> str:
@@ -118,10 +118,10 @@ class _SaePathTable(Dict[str, str]):
 
 SAE_PATHS: Dict[str, str] = _SaePathTable()
 
-# Where the offline SAE-encoding cache is written. Set ``SAP_SAE_ENCODED`` to
+# Where the offline SAE-encoding cache is written. Set ``ULS_SAE_ENCODED`` to
 # relocate it; unset, it sits beside the activations.
 OUTPUT_BASE = Path(
-    os.environ.get("SAP_SAE_ENCODED", f"{ROOT_DATA_PATH}/sae_encoded")
+    os.environ.get("ULS_SAE_ENCODED", f"{ROOT_DATA_PATH}/sae_encoded")
 )
 
 

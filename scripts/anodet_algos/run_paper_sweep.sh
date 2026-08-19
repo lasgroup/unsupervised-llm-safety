@@ -11,7 +11,7 @@
 # START WITH THE DRY RUN. It prints the exact Hydra override list for every
 # published configuration without executing anything, which is both the fastest
 # way to see what a cell of the table actually was, and the check that your
-# $SAP_SAE_ROOT is resolving to real files (the printed model_path is the path
+# $ULS_SAE_ROOT is resolving to real files (the printed model_path is the path
 # that will be opened).
 #
 # SCOPE
@@ -27,7 +27,7 @@
 # PREREQUISITES
 # -------------
 #   pip install -e '.[checkpoints]'
-#   $SAP_ACTIVATION_ROOT and $SAP_SAE_ROOT pointing at your extracted
+#   $ULS_ACTIVATION_ROOT and $ULS_SAE_ROOT pointing at your extracted
 #   activations and your trained SAE encoders
 # Run from the repository root.
 

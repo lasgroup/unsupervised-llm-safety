@@ -12,8 +12,8 @@
 #
 # Nothing in this file is a path. Where the training data comes from is decided
 # entirely by `unsupervised_llm_safety.data.dataset_registry` via `model_key`
-# below, rooted on $SAP_ACTIVATION_ROOT; where output lands is decided by
-# $SAP_OUTPUT_ROOT through exp_configs/config.yaml.
+# below, rooted on $ULS_ACTIVATION_ROOT; where output lands is decided by
+# $ULS_OUTPUT_ROOT through exp_configs/config.yaml.
 #
 # No `hydra.launcher` block is configured, so `--multirun` runs the sweep
 # sequentially on the local machine -- correct, but slow for a multi-point
@@ -49,4 +49,4 @@ training:
   learning_rate: 1e-3
 
 # Run and sweep directories are inherited from exp_configs/config.yaml, which
-# roots them on $SAP_OUTPUT_ROOT; do not add a `hydra:` block here.
+# roots them on $ULS_OUTPUT_ROOT; do not add a `hydra:` block here.

@@ -9,12 +9,12 @@
 #
 # Output locations are driven by one environment variable:
 #
-#   SAP_OUTPUT_ROOT   where run and sweep directories are created.
+#   ULS_OUTPUT_ROOT   where run and sweep directories are created.
 #                     Default: ./outputs relative to the invoking directory.
 #
 # Activation/artifact locations are NOT configured here; they come from
 # `unsupervised_llm_safety.data.dataset_registry`, which is rooted on
-# $SAP_ACTIVATION_ROOT. See docs/GETTING_STARTED.md for the full list.
+# $ULS_ACTIVATION_ROOT. See docs/GETTING_STARTED.md for the full list.
 defaults:
   - _self_
   - optional domain: common_sense_safety
@@ -35,9 +35,9 @@ hydra:
   job:
     chdir: True
   run:
-    dir: ${oc.env:SAP_OUTPUT_ROOT,outputs}/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
+    dir: ${oc.env:ULS_OUTPUT_ROOT,outputs}/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
   sweep:
-    dir: ${oc.env:SAP_OUTPUT_ROOT,outputs}/multirun/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
+    dir: ${oc.env:ULS_OUTPUT_ROOT,outputs}/multirun/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
 
 # --- Running sweeps on SLURM -------------------------------------------------
 #

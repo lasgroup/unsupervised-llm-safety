@@ -19,7 +19,7 @@ that (see below), and the sweep driver `chdir`s there itself.
 - [9. Evaluate a saved checkpoint](#9-evaluate-a-saved-checkpoint)
 - [10. Where output goes](#10-where-output-goes)
 - [11. Environment variables](#11-environment-variables)
-- [12. What is not in this repository](#12-what-is-not-in-this-repository)
+- [12. What you supply](#12-what-you-supply)
 
 ## 1. Install
 
@@ -131,7 +131,7 @@ python src/unsupervised_llm_safety/scripts/activations/extract_activations.py \
     analysis.dataset.split=train \
     analysis.dataset.max_samples=-1 \
     analysis.extraction.layer_index=30 \
-    analysis.extraction.output_path="${SAP_ACTIVATION_ROOT}/toxigen/toxigen_qwen3_8b_layer30_full.pth" \
+    analysis.extraction.output_path="${ULS_ACTIVATION_ROOT}/toxigen/toxigen_qwen3_8b_layer30_full.pth" \
     analysis.extraction.save_metadata=true \
     analysis.memory.initial_batch_size=8 \
     hydra.job.chdir=False
@@ -223,7 +223,7 @@ log line after the first extraction of a new dataset.
 ### 4b. Paths, in `src/unsupervised_llm_safety/data/dataset_registry.py`
 
 Every path in this module is an f-string rooted on `ROOT_DATA_PATH`
-(`$SAP_ACTIVATION_ROOT`). Add your file where it belongs:
+(`$ULS_ACTIVATION_ROOT`). Add your file where it belongs:
 
 | dict | when |
 |---|---|
@@ -239,7 +239,7 @@ label that appears in results and in `analysis/anomaly_metrics.py`'s slice
 categories, and `filter` is optional.
 
 HarmBench adversarial files are not listed here. They are discovered by glob
-under `$SAP_HARMBENCH_BASE` using the pattern
+under `$ULS_HARMBENCH_BASE` using the pattern
 `*_<harmbench_name>_l*_generation_last_token.pth`, filtered to the active layer.
 
 **Trap.** The output filename is written twice and compared never: once as
@@ -303,7 +303,7 @@ paths that do.
 The SAE-space methods (FreqMask-KM, LearnedMask, LearnedMask-LoRA, BCE, and
 CVDD when given an encoder) need a frozen encoder. No encoders ship with this
 code, so this step comes before any of those methods. The path resolver looks
-for `$SAP_SAE_ROOT/<model_key>__<variant>.pth`, so putting the encoder you train
+for `$ULS_SAE_ROOT/<model_key>__<variant>.pth`, so putting the encoder you train
 there is what makes the sweep driver find it.
 
 Entry point `src/unsupervised_llm_safety/scripts/train_encoder.py`, working
@@ -358,7 +358,7 @@ their defaults for every encoder the paper trained.
 Each grid point writes `trained_model.pth` and `results.json` into its own run
 directory. Pick the point with the best reconstruction at your target L0, then
 either pass its `trained_model.pth` as `anodet_algos.model_path=`, or copy it to
-`$SAP_SAE_ROOT/<model_key>__<variant>.pth` so the sweep driver's resolver finds
+`$ULS_SAE_ROOT/<model_key>__<variant>.pth` so the sweep driver's resolver finds
 it.
 
 ## 7. Run a detector
@@ -369,7 +369,7 @@ python -m unsupervised_llm_safety.anodet_algos.run_anodet_analysis \
     exp_ident=cvdd_kmeans_masked_qwen3_8b_seed42 \
     anodet_algos=cvdd_kmeans_masked \
     anodet_algos.model_key=qwen3_8b \
-    anodet_algos.model_path="${SAP_SAE_ROOT}/qwen3_8b__both.pth" \
+    anodet_algos.model_path="${ULS_SAE_ROOT}/qwen3_8b__both.pth" \
     anodet_algos.save_model=true \
     anodet_algos.use_last_token=true \
     anodet_algos.use_complex_data=true \
@@ -404,7 +404,7 @@ block ship as `???` placeholders and are overwritten from `dataset_registry`
 on every run, so writing a path into either of them has no effect.
 `use_centralized_datasets=false` is what suppresses the overwrite, and it
 leaves the `???` in place, so it raises unless you also supply the whole
-`datasets:` block yourself. Move data with `$SAP_ACTIVATION_ROOT` and the
+`datasets:` block yourself. Move data with `$ULS_ACTIVATION_ROOT` and the
 registry instead.
 
 ### The nine methods
@@ -452,7 +452,7 @@ hyperparameters per (method, model) and turns each into one
 
 Start with the dry run. It prints the exact override list for every published
 configuration without executing anything, which is both the fastest way to see
-what a cell of the table actually was and a check that `$SAP_SAE_ROOT` resolves
+what a cell of the table actually was and a check that `$ULS_SAE_ROOT` resolves
 to real files — the printed `model_path` is the path that will be opened.
 
 ```bash
@@ -480,7 +480,7 @@ Useful flags:
 | `--encoder-paths` | comma-separated SAE paths, matched positionally to `--models`, overriding the resolver |
 | `--override KEY=VALUE` | appended verbatim to the Hydra command line; repeatable. This is how you pass launcher settings |
 | `--dry-run` | print the commands, run nothing |
-| `--background` | detach each run, logging to `$SAP_OUTPUT_ROOT/background_logs/` |
+| `--background` | detach each run, logging to `$ULS_OUTPUT_ROOT/background_logs/` |
 
 Algorithm names here are partly virtual: `cvdd_km_global_mask`,
 `cvdd_km_no_mask`, `cvdd_km_raw_no_mask` and `local_freqmask_km` all map to the
@@ -534,9 +534,9 @@ hydra:
   job:
     chdir: True
   run:
-    dir: ${oc.env:SAP_OUTPUT_ROOT,outputs}/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
+    dir: ${oc.env:ULS_OUTPUT_ROOT,outputs}/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
   sweep:
-    dir: ${oc.env:SAP_OUTPUT_ROOT,outputs}/multirun/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
+    dir: ${oc.env:ULS_OUTPUT_ROOT,outputs}/multirun/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
 ```
 
 `chdir: True` means the process runs *inside* its run directory, so everything
@@ -561,64 +561,62 @@ FreqMask-KM results are written as `cvdd_scores.npz`. This is why
 
 ## 11. Environment variables
 
-Every one has a working default derived from the repository's own location.
-None are needed for `reference_scores/compute_metrics.py`; they matter once you
-extract, train or refit.
+All are prefixed `ULS_`, omitted in the table below. Every one has a working
+default derived from the repository's own location. None are needed for
+`reference_scores/compute_metrics.py`; they matter once you extract, train or
+refit.
 
 | variable | what it moves | default |
 |---|---|---|
-| `SAP_ACTIVATION_ROOT` | the root every path in `dataset_registry` is built from; set this one and the whole registry follows | `<repo>/activation_data` |
-| `SAP_HARMBENCH_BASE` | the HarmBench adversarial slice, and the HarmBench-safe rows `use_complex_data` folds into IID | `$SAP_ACTIVATION_ROOT/harmbench/` |
-| `SAP_BEAVERTAILS_HS_ROOT` | BeaverTails hidden states laid out `<root>/<model-slug>/all_hidden_states*.pth` | `$SAP_ACTIVATION_ROOT/beaver_tails_hs` |
-| `SAP_BEAVERTAILS_COMPLEX_OVERRIDE` | the BeaverTails-safe IID slice only; `model_key:/abs/path`, comma-separated | unset |
-| `SAP_SAE_ROOT` | the frozen SAE encoders | `$SAP_ACTIVATION_ROOT/saes` |
-| `SAP_SAE_<MODEL_KEY>` | one model's SAE, overriding `SAP_SAE_ROOT` | unset |
-| `SAP_SAE_<MODEL_KEY>_<VARIANT>` | one model's SAE for one variant; highest precedence | unset |
-| `SAP_SAE_ENCODED` | the offline SAE-encoding cache written by `precompute_sae_encodings` | `$SAP_ACTIVATION_ROOT/sae_encoded` |
-| `SAP_CLUSTERING_CACHE` | the offline k-means cache written by `precompute_clustering`; can reach a few GB | `$SAP_ACTIVATION_ROOT/clustering_cache` |
-| `SAP_LAYER_OVERRIDE` | route a model's registry paths to a non-canonical layer; `model_key:layer`, comma-separated | unset (canonical layer) |
-| `SAP_OUTPUT_ROOT` | where Hydra creates run and sweep directories | `./outputs` |
-| `SAP_TUNED_DEFAULTS` | an alternative hyperparameter file, in place of `exp_configs/best_hyperparameters.yaml` | unset |
+| `ACTIVATION_ROOT` | the root every path in `dataset_registry` is built from; set this one and the whole registry follows | `<repo>/activation_data` |
+| `HARMBENCH_BASE` | the HarmBench adversarial slice, and the HarmBench-safe rows `use_complex_data` folds into IID | `$ULS_ACTIVATION_ROOT/harmbench/` |
+| `BEAVERTAILS_HS_ROOT` | BeaverTails hidden states laid out `<root>/<model-slug>/all_hidden_states*.pth` | `$ULS_ACTIVATION_ROOT/beaver_tails_hs` |
+| `BEAVERTAILS_COMPLEX_OVERRIDE` | the BeaverTails-safe IID slice only; `model_key:/abs/path`, comma-separated | unset |
+| `SAE_ROOT` | the frozen SAE encoders | `$ULS_ACTIVATION_ROOT/saes` |
+| `SAE_<MODEL_KEY>` | one model's SAE, overriding `ULS_SAE_ROOT` | unset |
+| `SAE_<MODEL_KEY>_<VARIANT>` | one model's SAE for one variant; highest precedence | unset |
+| `SAE_ENCODED` | the offline SAE-encoding cache written by `precompute_sae_encodings` | `$ULS_ACTIVATION_ROOT/sae_encoded` |
+| `CLUSTERING_CACHE` | the offline k-means cache written by `precompute_clustering`; can reach a few GB | `$ULS_ACTIVATION_ROOT/clustering_cache` |
+| `LAYER_OVERRIDE` | route a model's registry paths to a non-canonical layer; `model_key:layer`, comma-separated | unset (canonical layer) |
+| `OUTPUT_ROOT` | where Hydra creates run and sweep directories | `./outputs` |
+| `TUNED_DEFAULTS` | an alternative hyperparameter file, in place of `exp_configs/best_hyperparameters.yaml` | unset |
 
-`SAP_SAE_<MODEL_KEY>` is name-mangled: take the model key, replace `.` with `_`,
-uppercase it. So `qwen3_8b` becomes `SAP_SAE_QWEN3_8B` and `qwen2_1.5b` becomes
-`SAP_SAE_QWEN2_1_5B`. The variant form appends the uppercased variant, e.g.
-`SAP_SAE_GPT_OSS_20B_FREQMASK_KM`. Resolution order is
-`SAP_SAE_<MODEL_KEY>_<VARIANT>`, then `SAP_SAE_<MODEL_KEY>`, then
-`$SAP_SAE_ROOT/<model_key>__<variant>.pth`.
+`ULS_SAE_<MODEL_KEY>` is name-mangled: take the model key, replace `.` with `_`,
+uppercase it. So `qwen3_8b` becomes `ULS_SAE_QWEN3_8B` and `qwen2_1.5b` becomes
+`ULS_SAE_QWEN2_1_5B`. The variant form appends the uppercased variant, e.g.
+`ULS_SAE_GPT_OSS_20B_FREQMASK_KM`. Resolution order is
+`ULS_SAE_<MODEL_KEY>_<VARIANT>`, then `ULS_SAE_<MODEL_KEY>`, then
+`$ULS_SAE_ROOT/<model_key>__<variant>.pth`.
 
 Because the default path carries the variant (`<model>__<variant>.pth`) and
-`gpt_oss_20b` needs two encoders, a single `SAP_SAE_GPT_OSS_20B` cannot be right
+`gpt_oss_20b` needs two encoders, a single `ULS_SAE_GPT_OSS_20B` cannot be right
 for both of its method families — either leave it unset and let the
 variant-specific default path resolve, or use the per-variant form.
 
-## 12. What is not in this repository
+## 12. What you supply
 
-Stated plainly so you do not go looking:
+This repository ships the code and the per-sample scores under
+`reference_scores/`. Everything else you generate yourself, following sections
+3 to 7: extracted representations, trained SAE encoders and fitted detectors.
+`reference_scores/compute_metrics.py` needs none of them.
 
-- **No representations, encoders or fitted detectors.** What ships is the code
-  plus the per-sample scores under `reference_scores/`. Extracted activations,
-  trained SAE encoders and fitted detector checkpoints you produce yourself,
-  following sections 3 to 7.
-- **No BeaverTails extractor.** `DATASET_PROCESSORS` has 21 entries and
-  BeaverTails is not among them. The BeaverTails representations behind the
-  paper were produced outside this codebase. Extracting them is not hard — a
-  forward pass over the corpus, residual stream at the right layer, last token —
-  but you would be writing it, and nothing guarantees your implementation
-  matches ours. The registry still expects the resulting files at the paths
-  `data/dataset_registry.py` builds (section 4b).
-- **No `exp_configs/dataset/` group.** The extraction config inlines its
-  `dataset` block, and you override it on the command line. There is no
-  per-dataset YAML to add.
-- **No SLURM launcher config.** `exp_configs/config.yaml` ships Hydra's basic
-  launcher. `--multirun` therefore runs sequentially on the local machine. The
-  comment at the bottom of that file is a template for adding
-  `hydra-submitit-launcher` and your own account and partition.
-- **The SAE encoders for `qwen2_1.5b`, `ministral_8b` and `llama3_8b`** were
-  never archived. Their tuned configurations are still in
-  `exp_configs/best_hyperparameters.yaml`, marked `sae_variant: unreleased`, so
-  the sweep driver skips the SAE-space combinations for those models with a
-  warning instead of guessing a path.
+Three things worth knowing before you start:
+
+- **BeaverTails extraction is not implemented here.** `DATASET_PROCESSORS` has
+  21 entries and BeaverTails is not among them, so you write that pass
+  yourself: the residual stream at the model's layer, last token, over the
+  corpus. Put the result where `data/dataset_registry.py` expects it
+  (section 4b).
+- **`qwen2_1.5b`, `ministral_8b` and `llama3_8b` have no SAE encoder here.**
+  Their tuned entries carry `sae_variant: unreleased`, so the sweep driver
+  skips the SAE-space methods for those models with a warning rather than
+  guessing a path. Pass `--encoder-paths` to point it at your own.
+- **No `exp_configs/dataset/` group and no SLURM launcher.** The extraction
+  config inlines its `dataset` block and you override it on the command line.
+  `exp_configs/config.yaml` ships Hydra's basic launcher, so `--multirun` runs
+  sequentially on the local machine; the comment at the bottom of that file is
+  a template for adding `hydra-submitit-launcher` with your own account and
+  partition.
 
 Tests, for what they cover:
 

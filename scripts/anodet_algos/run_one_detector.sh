@@ -69,9 +69,9 @@
 #
 # INPUTS
 # ------
-#   $SAP_ACTIVATION_ROOT  the activations (dataset_registry resolves the rest)
-#   $SAP_SAE_ROOT         the frozen SAE encoders, for the SAE-space methods
-#   $SAP_OUTPUT_ROOT      where the run directory is created
+#   $ULS_ACTIVATION_ROOT  the activations (dataset_registry resolves the rest)
+#   $ULS_SAE_ROOT         the frozen SAE encoders, for the SAE-space methods
+#   $ULS_OUTPUT_ROOT      where the run directory is created
 #
 # PREREQUISITES
 # -------------
@@ -87,8 +87,8 @@ VARIANT="${4:-}"
 shift $(( $# > 4 ? 4 : $# )) || true
 EXTRA_OVERRIDES=("$@")
 
-ACT_ROOT="${SAP_ACTIVATION_ROOT:-activation_data}"
-SAE_ROOT="${SAP_SAE_ROOT:-${ACT_ROOT}/saes}"
+ACT_ROOT="${ULS_ACTIVATION_ROOT:-activation_data}"
+SAE_ROOT="${ULS_SAE_ROOT:-${ACT_ROOT}/saes}"
 
 # The frozen encoder for this model. gpt_oss_20b is the one model with two
 # encoders -- __freqmask_km (sparsity weight 700) for the FreqMask-KM /
@@ -121,7 +121,7 @@ echo "seed         : ${SEED}"
 echo "tuned method : ${VARIANT:-<config default>}"
 echo "activations  : ${ACT_ROOT}"
 echo "model_path   : ${MODEL_PATH}"
-echo "output root  : ${SAP_OUTPUT_ROOT:-./outputs}"
+echo "output root  : ${ULS_OUTPUT_ROOT:-./outputs}"
 if [ ${#EXTRA_OVERRIDES[@]} -gt 0 ]; then
   echo "extra        : ${EXTRA_OVERRIDES[*]}"
 fi

@@ -27,8 +27,8 @@ ENCODER PATHS, UNRELEASED MODELS, LAUNCHERS
 -------------------------------------------
 1. ``model_path`` is resolved by :func:`sae_path`, which follows exactly the
    convention ``unsupervised_llm_safety.data.precompute_sae_encodings``
-   already uses: ``$SAP_SAE_<MODEL_KEY>``, else
-   ``$SAP_SAE_ROOT/<model_key>__<variant>.pth``. Name your trained encoders
+   already uses: ``$ULS_SAE_<MODEL_KEY>``, else
+   ``$ULS_SAE_ROOT/<model_key>__<variant>.pth``. Name your trained encoders
    that way, or set the environment variables to point at them.
 
 2. The models whose SAE encoders were never archived are still described, but
@@ -93,21 +93,21 @@ from unsupervised_llm_safety.common.tuned_defaults import (  # noqa: E402
 
 # Same default chain as dataset_registry.ROOT_DATA_PATH -> "<root>/saes".
 _ACTIVATION_ROOT = os.environ.get(
-    "SAP_ACTIVATION_ROOT", str(_REPO_ROOT / "activation_data")
+    "ULS_ACTIVATION_ROOT", str(_REPO_ROOT / "activation_data")
 )
 
 
 def sae_root() -> str:
     """Return the directory holding the frozen SAE encoders."""
-    return os.environ.get("SAP_SAE_ROOT", f"{_ACTIVATION_ROOT}/saes")
+    return os.environ.get("ULS_SAE_ROOT", f"{_ACTIVATION_ROOT}/saes")
 
 
 def sae_path(model_key: str, variant: str) -> str:
     """Resolve the SAE checkpoint for *model_key* / *variant*.
 
     Precedence:
-      1. ``$SAP_SAE_<MODEL_KEY>_<VARIANT>`` (uppercased, dots -> underscores)
-      2. ``$SAP_SAE_<MODEL_KEY>``
+      1. ``$ULS_SAE_<MODEL_KEY>_<VARIANT>`` (uppercased, dots -> underscores)
+      2. ``$ULS_SAE_<MODEL_KEY>``
       3. ``<sae_root()>/<model_key>__<variant>.pth``
 
     ``variant`` names which encoder a method was tuned against, because
@@ -118,10 +118,10 @@ def sae_path(model_key: str, variant: str) -> str:
     single encoder for every method, shipped as ``both``.
     """
     slug = model_key.upper().replace(".", "_")
-    specific = os.environ.get(f"SAP_SAE_{slug}_{variant.upper()}")
+    specific = os.environ.get(f"ULS_SAE_{slug}_{variant.upper()}")
     if specific:
         return specific
-    generic = os.environ.get(f"SAP_SAE_{slug}")
+    generic = os.environ.get(f"ULS_SAE_{slug}")
     if generic:
         return generic
     return f"{sae_root()}/{model_key}__{variant}.pth"
@@ -433,7 +433,7 @@ def build_command(
                 print(
                     f"Warning: {algorithm} (config={hydra_config}) "
                     f"requires an SAE encoder but none could be resolved for "
-                    f"{model_key}. Set $SAP_SAE_ROOT or pass --encoder-paths. "
+                    f"{model_key}. Set $ULS_SAE_ROOT or pass --encoder-paths. "
                     f"Skipping."
                 )
                 return None
@@ -528,7 +528,7 @@ def run_experiment(
         if background:
             out_dir = (
                 log_dir
-                or Path(os.environ.get("SAP_OUTPUT_ROOT", "outputs"))
+                or Path(os.environ.get("ULS_OUTPUT_ROOT", "outputs"))
                 / "background_logs"
             )
             out_dir.mkdir(parents=True, exist_ok=True)
