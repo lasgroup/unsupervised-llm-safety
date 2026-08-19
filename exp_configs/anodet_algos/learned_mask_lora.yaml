@@ -1,0 +1,52 @@
+# Per-cluster LoRA adaptation on top of learned_mask
+defaults:
+  - learned_mask    # inherit all step-1 params and shared config
+  - _self_          # this file's values override
+
+# --- Tuned defaults ---------------------------------------------------------
+# Before anything is fitted, run_anodet_analysis writes the paper's tuned
+# values for (model_key, tuned_method) from exp_configs/best_hyperparameters.yaml
+# over the defaults in this file. An explicit command-line override still wins;
+# the order is  CLI override > best_hyperparameters.yaml > this file.
+# Every value applied is logged with a `[tuned-defaults]` prefix.
+#
+# `tuned_method` is the *virtual* algorithm name, because one config file backs
+# several published methods. See the naming table in best_hyperparameters.yaml.
+use_tuned_defaults: true
+tuned_method: learned_mask_lora
+
+# Override method name
+method: "learned_mask_lora"
+
+# LoRA-specific parameters
+learned_mask_lora:
+  # --- Step-1 reuse ---
+  # Path to a completed learned_mask (stage-1) run directory. When set, the
+  # stage-1 clustering and masks are loaded from it; when null, stage 1 is
+  # refitted from scratch before the LoRA stage.
+  step1_run_dir: null
+
+  # --- LoRA parameters ---
+  lora_rank: 8
+  lora_lr: 1.0e-3
+  lora_epochs: 30
+  lora_batch_size: 256
+  lora_sparsity_lambda: 1.0e-3
+  lora_min_cluster_size: 20
+
+  # --- Size-dependent rank schedule ---
+  # When null, all clusters use lora_rank. When set, maps size bins to ranks.
+  # Format: {small: 2, medium: 4, large: 8}
+  lora_rank_schedule: null
+  rank_schedule_small_max: 500
+  rank_schedule_medium_max: 2000
+
+  # --- Scoring ---
+  scoring_method: "l2_norm"    # "l2_norm" or "mahalanobis"
+  mahalanobis_reg: 1.0e-4      # Covariance regularization for Mahalanobis
+
+  # --- Misc ---
+  seed: 42
+
+  # --- Diagnostics ---
+  run_expensive_diagnostics: true  # Set false for sweeps

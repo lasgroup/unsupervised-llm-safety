@@ -1,0 +1,1011 @@
+# exp_configs/best_hyperparameters.yaml
+# ============================================================================
+# Per-(model, method) tuned hyperparameters: the values the paper reports.
+#
+# WHERE THESE COME FROM, AND WHICH SOURCE WINS
+# --------------------------------------------
+# THE PAPER IS AUTHORITATIVE. Every value below whose `source` says `paper`
+# or `paper+code` is a cell of one of these tables/paragraphs:
+#
+#   Appendix "Hyperparameters" (\label{app:hyperparameters})
+#     tab:hp-baselines-qwen        Qwen 1.5B      -> qwen2_1.5b
+#     tab:hp-baselines-ministral   Ministral 8B   -> ministral_8b
+#     tab:hp-baselines-llama3      LLaMA3 8B      -> llama3_8b
+#     tab:hp-baselines-qwen3       Qwen3 8B       -> qwen3_8b
+#     tab:hp-baselines-gpt         GPT-oss 20B    -> gpt_oss_20b
+#     tab:hp-baselines-gemma       Gemma 4 26B    -> gemma4_26b
+#     tab:hp-framework             FreqMask-KM N (clusters) and k (mask size)
+#     "Stage 1 / Stage 2" paragraphs  LearnedMask-LoRA
+#   Appendix "Ablations for LearnedMask-LoRA" (\label{app:learnedmask-lora-ablations})
+#     its opening paragraph pins the LearnedMask configuration shared by every
+#     run in that section.
+#
+# Values marked `source: code` are NOT stated in the paper. They are the
+# values recorded in the `.hydra/overrides.yaml` of the run that produced the
+# published number, and are kept because dropping them would silently change
+# the published configuration.
+#
+# Values marked `source: paper+code` agree in both places.
+#
+# Where NEITHER source pins a value, there is no key here. The method YAML in
+# exp_configs/anodet_algos/ supplies its own default and that is what runs.
+#
+# HOW THE VALUES ARE USED
+# -----------------------
+# `unsupervised_llm_safety.common.tuned_defaults.apply_tuned_defaults` is
+# called by run_anodet_analysis before anything is fitted. Precedence is:
+#
+#   explicit command-line override  >  this file  >  the method YAML default
+#
+# so typing `anodet_algos.gmm.n_components=5` still gives you 5. Opt out of
+# this file entirely with `anodet_algos.use_tuned_defaults=false`.
+#
+# Every application is logged with a `[tuned-defaults]` prefix, one line per
+# key, saying whether the value came from here or was left to a CLI override.
+#
+# METHOD NAMING
+# -------------
+# The method keys below are *virtual algorithm names*. Several of them share a
+# single Hydra config, because they are the same code driven into different
+# regimes. `hydra_config` on each entry names the file in
+# exp_configs/anodet_algos/ that `anodet_algos=<name>` loads.
+#
+#   paper name             virtual algorithm      hydra_config          run it with
+#   ---------------------  ---------------------  --------------------  -----------------------------------
+#   FreqMask-KM            cvdd_km_global_mask    cvdd_kmeans_masked    anodet_algos=cvdd_kmeans_masked
+#   Local FreqMask-KM      local_freqmask_km      cvdd_kmeans_masked    ... anodet_algos.tuned_method=local_freqmask_km
+#   FreqMask-KM, no mask   cvdd_km_no_mask        cvdd_kmeans_masked    ... anodet_algos.tuned_method=cvdd_km_no_mask
+#   KMeans on raw acts.    cvdd_km_raw_no_mask    cvdd_kmeans_masked    ... anodet_algos.tuned_method=cvdd_km_raw_no_mask
+#   CVDD (SAE space)       cvdd_sae               cvdd                  anodet_algos=cvdd anodet_algos.tuned_method=cvdd_sae
+#   CVDD                   cvdd                   cvdd                  anodet_algos=cvdd
+#   LearnedMask (stage 1)  learned_mask_step1     learned_mask          anodet_algos=learned_mask
+#   LearnedMask-LoRA       learned_mask_lora      learned_mask_lora     anodet_algos=learned_mask_lora
+#   Mahalanobis            mahalanobis            mahalanobis           anodet_algos=mahalanobis
+#   GMM                    gmm                    gmm                   anodet_algos=gmm
+#   One-Class SVM          one_class_svm          one_class_svm         anodet_algos=one_class_svm
+#   Deep SVDD              deep_svdd              deep_svdd             anodet_algos=deep_svdd
+#   BCE (linear probe)     bce                    bce                   anodet_algos=bce
+#
+# Each anodet_algos/*.yaml carries a `tuned_method:` key naming which of these
+# it defaults to, so `anodet_algos=cvdd_kmeans_masked` gets FreqMask-KM without
+# your having to know the virtual name. Override `tuned_method` for a variant.
+#
+# `params` keys are dotted paths relative to the `anodet_algos` config node,
+# i.e. `gmm.n_components` here is `anodet_algos.gmm.n_components` on the CLI.
+#
+# `sae_variant` is metadata for the sweep orchestrator only -- it names which
+# frozen SAE encoder the cell was tuned against and is turned into
+# `anodet_algos.model_path` by scripts/anodet_algos/run_baseline_experiments.py.
+# It is NEVER applied by apply_tuned_defaults: paths are resolved by the
+# caller, not baked in here. Values:
+#     <name>       -> <SAE root>/<model_key>__<name>.pth
+#     null         -> model_path=null (the method never opens an encoder)
+#     unreleased   -> this model's encoder was not archived; the orchestrator
+#                     refuses to emit a command rather than guess a path
+#     (key absent) -> the method takes no model_path at all
+# ============================================================================
+
+schema_version: 1
+
+models:
+
+  # ==========================================================================
+  # Qwen 1.5B -- NOT released (activations and SAE encoder were not archived).
+  # Recorded here because the paper pins these cells.
+  # ==========================================================================
+  qwen2_1.5b:
+    paper_name: "Qwen 1.5B"
+    released: false
+    methods:
+
+      mahalanobis:
+        paper_name: Mahalanobis
+        hydra_config: mahalanobis
+        source: paper
+        params:
+          mahalanobis.regularization: 1.0e-5
+          mahalanobis.score_type: sigmoid
+
+      gmm:
+        paper_name: GMM
+        hydra_config: gmm
+        source: paper
+        params:
+          gmm.n_components: 50
+          gmm.init_method: "kmeans++"
+          gmm.score_normalization: percentile
+
+      one_class_svm:
+        paper_name: One-Class SVM
+        hydra_config: one_class_svm
+        source: paper
+        params:
+          one_class_svm.nu: 0.01
+          one_class_svm.gamma: 0.01
+          one_class_svm.kernel: rbf
+
+      deep_svdd:
+        paper_name: Deep SVDD
+        hydra_config: deep_svdd
+        source: paper
+        params:
+          deep_svdd.rep_dim: 128
+          deep_svdd.nu: 0.2
+          deep_svdd.lr: 1.0e-3
+
+      cvdd:
+        paper_name: CVDD
+        hydra_config: cvdd
+        source: paper
+        sae_variant: null
+        params:
+          cvdd.n_contexts: 500
+          cvdd.ortho_weight: 1.0e-3
+          cvdd.use_pretrained_encoder: false
+
+      cvdd_km_global_mask:
+        paper_name: FreqMask-KM
+        hydra_config: cvdd_kmeans_masked
+        source: paper
+        sae_variant: unreleased
+        note: >-
+          N and k from tab:hp-framework. The appendix ablation prose
+          (app:freq-abl-K) says this model's sweep peaked at N=25, which
+          contradicts the selection table's N=200. The selection table is the
+          statement of what was used, so N=200 is recorded.
+        params:
+          cvdd_kmeans_masked.n_clusters: 200
+          cvdd_kmeans_masked.k_mask: 100
+          cvdd_kmeans_masked.global_mask: true
+          cvdd_kmeans_masked.use_masking: true
+          cvdd_kmeans_masked.mask_variant: top_k
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      cvdd_km_no_mask:
+        paper_name: "FreqMask-KM with the mask disabled"
+        hydra_config: cvdd_kmeans_masked
+        source: paper
+        sae_variant: unreleased
+        note: >-
+          The paper's published no-mask cell (tab:mask-ablation, full sweep in
+          tab:freq-abl-nomask) gives the no-mask condition its OWN best N
+          rather than reusing the masked configuration's, so N here is that
+          per-model best, not FreqMask-KM's N. The published sweep was N in
+          {10, 25, 50, 100, 200, 500}; pass it as a --multirun axis to
+          reproduce the whole row.
+        params:
+          cvdd_kmeans_masked.n_clusters: 200
+          cvdd_kmeans_masked.use_masking: false
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      learned_mask_step1:
+        paper_name: LearnedMask (stage 1 only)
+        hydra_config: learned_mask
+        source: paper
+        sae_variant: unreleased
+        note: >-
+          Stage 2 (LoRA) is disabled on this model: the paper reports the
+          stage-1 checkpoint as the LearnedMask-LoRA cell because LoRA costs
+          0.033 AUROC here.
+        params:
+          learned_mask.n_clusters: 100
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.logit_init: 0.5
+          learned_mask.lambda_candidates:
+            [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2, 3.0e-2, 1.0e-1]
+
+  # ==========================================================================
+  # Ministral 8B -- NOT released.
+  # ==========================================================================
+  ministral_8b:
+    paper_name: "Ministral 8B"
+    released: false
+    methods:
+
+      mahalanobis:
+        paper_name: Mahalanobis
+        hydra_config: mahalanobis
+        source: paper
+        params:
+          mahalanobis.regularization: 1.0e-5
+          mahalanobis.score_type: percentile
+
+      gmm:
+        paper_name: GMM
+        hydra_config: gmm
+        source: paper
+        params:
+          gmm.n_components: 10
+          gmm.init_method: "kmeans++"
+          gmm.score_normalization: sigmoid
+
+      one_class_svm:
+        paper_name: One-Class SVM
+        hydra_config: one_class_svm
+        source: paper
+        params:
+          one_class_svm.nu: 0.1
+          one_class_svm.gamma: 1.0e-3
+          one_class_svm.kernel: rbf
+
+      deep_svdd:
+        paper_name: Deep SVDD
+        hydra_config: deep_svdd
+        source: paper
+        params:
+          deep_svdd.rep_dim: 128
+          deep_svdd.nu: 0.2
+          deep_svdd.lr: 1.0e-3
+
+      cvdd:
+        paper_name: CVDD
+        hydra_config: cvdd
+        source: paper
+        sae_variant: null
+        params:
+          cvdd.n_contexts: 50
+          cvdd.ortho_weight: 1.0e-3
+          cvdd.use_pretrained_encoder: false
+
+      cvdd_km_global_mask:
+        paper_name: FreqMask-KM
+        hydra_config: cvdd_kmeans_masked
+        source: paper
+        sae_variant: unreleased
+        params:
+          cvdd_kmeans_masked.n_clusters: 50
+          cvdd_kmeans_masked.k_mask: 200
+          cvdd_kmeans_masked.global_mask: true
+          cvdd_kmeans_masked.use_masking: true
+          cvdd_kmeans_masked.mask_variant: top_k
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      cvdd_km_no_mask:
+        paper_name: "FreqMask-KM with the mask disabled"
+        hydra_config: cvdd_kmeans_masked
+        source: paper
+        sae_variant: unreleased
+        note: >-
+          The paper's published no-mask cell (tab:mask-ablation, full sweep in
+          tab:freq-abl-nomask) gives the no-mask condition its OWN best N
+          rather than reusing the masked configuration's, so N here is that
+          per-model best, not FreqMask-KM's N. The published sweep was N in
+          {10, 25, 50, 100, 200, 500}; pass it as a --multirun axis to
+          reproduce the whole row.
+        params:
+          cvdd_kmeans_masked.n_clusters: 50
+          cvdd_kmeans_masked.use_masking: false
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      learned_mask_step1:
+        paper_name: LearnedMask (stage 1)
+        hydra_config: learned_mask
+        source: paper
+        sae_variant: unreleased
+        params:
+          learned_mask.n_clusters: 50
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.logit_init: 0.5
+          learned_mask.lambda_candidates:
+            [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2, 3.0e-2, 1.0e-1]
+
+      learned_mask_lora:
+        paper_name: LearnedMask-LoRA
+        hydra_config: learned_mask_lora
+        source: paper
+        sae_variant: unreleased
+        params:
+          learned_mask.n_clusters: 50
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.logit_init: 0.5
+          learned_mask_lora.lora_epochs: 30
+          learned_mask_lora.lora_lr: 1.0e-3
+          learned_mask_lora.lora_sparsity_lambda: 1.0e-3
+          learned_mask_lora.lora_min_cluster_size: 20
+          learned_mask_lora.lora_rank_schedule: {small: 2, medium: 4, large: 8}
+          learned_mask_lora.scoring_method: l2_norm
+
+  # ==========================================================================
+  # LLaMA3 8B -- NOT released.
+  # ==========================================================================
+  llama3_8b:
+    paper_name: "LLaMA3 8B"
+    released: false
+    methods:
+
+      mahalanobis:
+        paper_name: Mahalanobis
+        hydra_config: mahalanobis
+        source: paper
+        params:
+          mahalanobis.regularization: 1.0e-5
+          mahalanobis.score_type: percentile
+
+      gmm:
+        paper_name: GMM
+        hydra_config: gmm
+        source: paper
+        params:
+          gmm.n_components: 10
+          gmm.init_method: "kmeans++"
+          gmm.score_normalization: percentile
+
+      one_class_svm:
+        paper_name: One-Class SVM
+        hydra_config: one_class_svm
+        source: paper
+        params:
+          one_class_svm.nu: 0.1
+          one_class_svm.gamma: 0.01
+          one_class_svm.kernel: rbf
+
+      deep_svdd:
+        paper_name: Deep SVDD
+        hydra_config: deep_svdd
+        source: paper
+        params:
+          deep_svdd.rep_dim: 128
+          deep_svdd.nu: 0.2
+          deep_svdd.lr: 1.0e-3
+
+      cvdd:
+        paper_name: CVDD
+        hydra_config: cvdd
+        source: paper
+        sae_variant: null
+        params:
+          cvdd.n_contexts: 500
+          cvdd.ortho_weight: 1.0e-3
+          cvdd.use_pretrained_encoder: false
+
+      cvdd_km_global_mask:
+        paper_name: FreqMask-KM
+        hydra_config: cvdd_kmeans_masked
+        source: paper
+        sae_variant: unreleased
+        params:
+          cvdd_kmeans_masked.n_clusters: 100
+          cvdd_kmeans_masked.k_mask: 400
+          cvdd_kmeans_masked.global_mask: true
+          cvdd_kmeans_masked.use_masking: true
+          cvdd_kmeans_masked.mask_variant: top_k
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      cvdd_km_no_mask:
+        paper_name: "FreqMask-KM with the mask disabled"
+        hydra_config: cvdd_kmeans_masked
+        source: paper
+        sae_variant: unreleased
+        note: >-
+          The paper's published no-mask cell (tab:mask-ablation, full sweep in
+          tab:freq-abl-nomask) gives the no-mask condition its OWN best N
+          rather than reusing the masked configuration's, so N here is that
+          per-model best, not FreqMask-KM's N. The published sweep was N in
+          {10, 25, 50, 100, 200, 500}; pass it as a --multirun axis to
+          reproduce the whole row.
+        params:
+          cvdd_kmeans_masked.n_clusters: 100
+          cvdd_kmeans_masked.use_masking: false
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      learned_mask_step1:
+        paper_name: LearnedMask (stage 1)
+        hydra_config: learned_mask
+        source: paper
+        sae_variant: unreleased
+        params:
+          learned_mask.n_clusters: 50
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.logit_init: 0.5
+          learned_mask.lambda_candidates:
+            [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2, 3.0e-2, 1.0e-1]
+
+      learned_mask_lora:
+        paper_name: LearnedMask-LoRA
+        hydra_config: learned_mask_lora
+        source: paper
+        sae_variant: unreleased
+        params:
+          learned_mask.n_clusters: 50
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.logit_init: 0.5
+          learned_mask_lora.lora_epochs: 30
+          learned_mask_lora.lora_lr: 1.0e-3
+          learned_mask_lora.lora_sparsity_lambda: 1.0e-3
+          learned_mask_lora.lora_min_cluster_size: 500
+          learned_mask_lora.lora_rank_schedule: {small: 2, medium: 4, large: 8}
+          learned_mask_lora.scoring_method: l2_norm
+
+  # ==========================================================================
+  # Qwen3 8B -- RELEASED.
+  # ==========================================================================
+  qwen3_8b:
+    paper_name: "Qwen3 8B"
+    released: true
+    methods:
+
+      mahalanobis:
+        paper_name: Mahalanobis
+        hydra_config: mahalanobis
+        source: paper
+        note: Both values come from tab:hp-baselines-qwen3.
+        params:
+          mahalanobis.regularization: 1.0e-5
+          mahalanobis.score_type: percentile
+
+      gmm:
+        paper_name: GMM
+        hydra_config: gmm
+        source: paper
+        params:
+          gmm.n_components: 100
+          gmm.init_method: "kmeans++"
+          gmm.score_normalization: sigmoid
+
+      one_class_svm:
+        paper_name: One-Class SVM
+        hydra_config: one_class_svm
+        source: paper
+        params:
+          one_class_svm.nu: 0.05
+          one_class_svm.gamma: 0.01
+          one_class_svm.kernel: rbf
+
+      deep_svdd:
+        paper_name: Deep SVDD
+        hydra_config: deep_svdd
+        source: paper
+        params:
+          deep_svdd.rep_dim: 32
+          deep_svdd.nu: 0.1
+          deep_svdd.lr: 1.0e-2
+
+      cvdd:
+        paper_name: CVDD
+        hydra_config: cvdd
+        source: paper
+        sae_variant: null
+        note: >-
+          use_pretrained_encoder=false matches the other models' CVDD entries;
+          the paper describes CVDD as operating on raw residual-stream
+          activations.
+        params:
+          cvdd.n_contexts: 50
+          cvdd.ortho_weight: 1.0e-4
+          cvdd.use_pretrained_encoder: false
+
+      cvdd_km_global_mask:
+        paper_name: FreqMask-KM
+        hydra_config: cvdd_kmeans_masked
+        source: paper+code
+        sae_variant: both
+        note: >-
+          N=100, k=400 from tab:hp-framework. The remaining keys are the
+          structural definition of FreqMask-KM (global top-k frequency mask,
+          L1 centroid distance, KMeans in SAE space, fixed centroids) as
+          stated in the framework-instantiations section. mask_coverage has no
+          effect when mask_variant=top_k; it is recorded so the configuration
+          matches the published run exactly.
+        params:
+          cvdd_kmeans_masked.n_clusters: 100
+          cvdd_kmeans_masked.k_mask: 400
+          cvdd_kmeans_masked.mask_coverage: 0.9
+          cvdd_kmeans_masked.global_mask: true
+          cvdd_kmeans_masked.use_masking: true
+          cvdd_kmeans_masked.mask_variant: top_k
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      cvdd_km_raw_no_mask:
+        paper_name: "KMeans on raw activations, no mask (ablation)"
+        hydra_config: cvdd_kmeans_masked
+        source: code
+        sae_variant: null
+        note: >-
+          Ablation with no per-model table in the paper; these are the values
+          the published run used. distance_metric is a two-value Hydra sweep
+          axis, so one --multirun job produces both L1 and L2.
+        params:
+          cvdd_kmeans_masked.n_clusters: 100
+          cvdd_kmeans_masked.use_masking: false
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+          cvdd_kmeans_masked.use_pretrained_encoder: false
+          cvdd_kmeans_masked.identity_encoder: true
+          cvdd_kmeans_masked.health_check.enabled: false
+        sweep_params:
+          cvdd_kmeans_masked.distance_metric: "l1,l2"
+
+      cvdd_km_no_mask:
+        paper_name: "FreqMask-KM with the mask disabled"
+        hydra_config: cvdd_kmeans_masked
+        source: paper
+        sae_variant: both
+        note: >-
+          The paper's published no-mask cell (tab:mask-ablation, full sweep in
+          tab:freq-abl-nomask) gives the no-mask condition its OWN best N
+          rather than reusing the masked configuration's, so N here is that
+          per-model best, not FreqMask-KM's N. The published sweep was N in
+          {10, 25, 50, 100, 200, 500}; pass it as a --multirun axis to
+          reproduce the whole row.
+        params:
+          cvdd_kmeans_masked.n_clusters: 100
+          cvdd_kmeans_masked.use_masking: false
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      learned_mask_step1:
+        paper_name: LearnedMask (stage 1)
+        hydra_config: learned_mask
+        source: paper+code
+        sae_variant: both
+        note: >-
+          N=100 agrees between the paper (app:learnedmask-lora-ablations) and
+          the published run. min_cluster_size is 0, NOT the paper's prose
+          value of 50: the published checkpoints and the scores in
+          reference_scores/ were produced at 0, so changing it would stop
+          --best reproducing them. train_decoder is not mentioned in the
+          paper.
+        params:
+          learned_mask.n_clusters: 100
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.min_cluster_size: 0
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.train_decoder: true
+          learned_mask.logit_init: 0.5
+          learned_mask.use_clustering_cache: false
+          learned_mask.lambda_candidates:
+            [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2, 3.0e-2, 1.0e-1]
+
+      learned_mask_lora:
+        paper_name: LearnedMask-LoRA
+        hydra_config: learned_mask_lora
+        source: paper
+        sae_variant: both
+        note: >-
+          The Table-1 LearnedMask-LoRA cell for Qwen3 is stage 1 + stage 2.
+          The paper states the main-table Qwen3 run used a FLAT rank r=8, not
+          the {2,4,8} size schedule (app:learnedmask-lora-ablations, "Relation
+          to tab:main-results"), so lora_rank_schedule stays null and
+          lora_rank=8. lora_min_cluster_size=50 is stated twice in the paper.
+        params:
+          learned_mask.n_clusters: 100
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.min_cluster_size: 0
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.train_decoder: true
+          learned_mask.logit_init: 0.5
+          learned_mask_lora.lora_rank: 8
+          learned_mask_lora.lora_rank_schedule: null
+          learned_mask_lora.lora_epochs: 30
+          learned_mask_lora.lora_lr: 1.0e-3
+          learned_mask_lora.lora_sparsity_lambda: 1.0e-3
+          learned_mask_lora.lora_min_cluster_size: 50
+          learned_mask_lora.scoring_method: l2_norm
+
+  # ==========================================================================
+  # GPT-oss 20B -- RELEASED. Two SAE encoders: the sparsity-weight-700 one
+  # (`freqmask_km`) for the FreqMask-KM / CVDD-SAE family, the weight-300 one
+  # (`learnedmask`) for LearnedMask and BCE.
+  # ==========================================================================
+  gpt_oss_20b:
+    paper_name: "GPT-oss 20B"
+    released: true
+    methods:
+
+      mahalanobis:
+        paper_name: Mahalanobis
+        hydra_config: mahalanobis
+        source: paper+code
+        note: >-
+          score_type matters here. The method YAML defaults to `percentile`,
+          which hard-clips at the 5th/95th training percentiles; on this model
+          every adversarial sample clips to exactly 1.0 and all eight
+          HarmBench attacks then report a byte-identical AUROC.
+        params:
+          mahalanobis.regularization: 1.0e-5
+          mahalanobis.score_type: sigmoid
+
+      gmm:
+        paper_name: GMM
+        hydra_config: gmm
+        source: paper+code
+        params:
+          gmm.n_components: 10
+          gmm.init_method: random
+          gmm.score_normalization: sigmoid
+
+      one_class_svm:
+        paper_name: One-Class SVM
+        hydra_config: one_class_svm
+        source: paper+code
+        note: >-
+          nu, gamma and kernel are the paper's. lr is not a hyperparameter the
+          paper names; it is the value the published run used, kept so the
+          published configuration is unchanged.
+        params:
+          one_class_svm.nu: 0.1
+          one_class_svm.gamma: 1.0e-4
+          one_class_svm.kernel: rbf
+          one_class_svm.lr: 1.0e-3
+
+      deep_svdd:
+        paper_name: Deep SVDD
+        hydra_config: deep_svdd
+        source: paper+code
+        params:
+          deep_svdd.rep_dim: 16
+          deep_svdd.nu: 0.05
+          deep_svdd.lr: 1.0e-4
+
+      cvdd:
+        paper_name: CVDD
+        hydra_config: cvdd
+        source: paper+code
+        sae_variant: null
+        params:
+          cvdd.n_contexts: 500
+          cvdd.ortho_weight: 1.0e-4
+          cvdd.use_pretrained_encoder: false
+
+      bce:
+        paper_name: BCE (supervised reference)
+        hydra_config: bce
+        source: code
+        sae_variant: learnedmask
+        note: >-
+          The paper describes the Table-1 BCE row as a linear probe with bias
+          on SAE features, but does not give per-model hyperparameters beyond
+          "best of lr in {1e-3, 1e-4}". These values reproduce the reported
+          cell. freeze_encoder is left at the method YAML's `false`, so the
+          SAE encoder is fine-tuned rather than frozen, which is what the
+          published run did and is not what "probe" usually means.
+        params:
+          bce.use_pretrained_encoder: true
+          bce.epochs: 50
+          bce.lr: 1.0e-4
+
+      cvdd_km_global_mask:
+        paper_name: FreqMask-KM
+        hydra_config: cvdd_kmeans_masked
+        source: paper+code
+        sae_variant: freqmask_km
+        note: >-
+          N=50, k=50 from tab:hp-framework, which the published run agrees
+          with. The appendix ablation prose (app:freq-abl-K) reads the sweep
+          peak for this model as N in {10, 25}, which disagrees with the
+          selection table; the selection table is what was used.
+        params:
+          cvdd_kmeans_masked.n_clusters: 50
+          cvdd_kmeans_masked.k_mask: 50
+          cvdd_kmeans_masked.mask_coverage: 0.9
+          cvdd_kmeans_masked.global_mask: true
+          cvdd_kmeans_masked.use_masking: true
+          cvdd_kmeans_masked.mask_variant: top_k
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      cvdd_km_no_mask:
+        paper_name: "FreqMask-KM with the mask disabled"
+        hydra_config: cvdd_kmeans_masked
+        source: paper
+        sae_variant: freqmask_km
+        note: >-
+          The paper's published no-mask cell (tab:mask-ablation, full sweep in
+          tab:freq-abl-nomask) gives the no-mask condition its OWN best N
+          rather than reusing the masked configuration's, so N here is that
+          per-model best, not FreqMask-KM's N. The published sweep was N in
+          {10, 25, 50, 100, 200, 500}; pass it as a --multirun axis to
+          reproduce the whole row.
+        params:
+          cvdd_kmeans_masked.n_clusters: 10
+          cvdd_kmeans_masked.use_masking: false
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      cvdd_km_raw_no_mask:
+        paper_name: "KMeans on raw activations, no mask (ablation)"
+        hydra_config: cvdd_kmeans_masked
+        source: code
+        sae_variant: null
+        params:
+          cvdd_kmeans_masked.n_clusters: 50
+          cvdd_kmeans_masked.use_masking: false
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+          cvdd_kmeans_masked.use_pretrained_encoder: false
+          cvdd_kmeans_masked.identity_encoder: true
+          cvdd_kmeans_masked.health_check.enabled: false
+        sweep_params:
+          cvdd_kmeans_masked.distance_metric: "l1,l2"
+
+      cvdd_sae:
+        paper_name: "CVDD (SAE space)"
+        hydra_config: cvdd
+        source: code
+        sae_variant: freqmask_km
+        note: >-
+          Decomposition-table row with no per-model hyperparameter table in
+          the paper; these are the values the published run used.
+        params:
+          cvdd.n_contexts: 10
+          cvdd.ortho_weight: 1.0e-3
+          cvdd.use_pretrained_encoder: true
+
+      local_freqmask_km:
+        paper_name: "Local FreqMask-KM"
+        hydra_config: cvdd_kmeans_masked
+        source: code
+        sae_variant: freqmask_km
+        note: >-
+          The paper says Local FreqMask-KM "uses the same hyperparameters" as
+          FreqMask-KM with the top-k mask applied per cluster. The published
+          run did not: it used variable-size frequency_coverage masks at 0.95,
+          L0 (binary Hamming) clustering, N=200 rather than 50, and a single
+          epoch. The values below are what produced the reported number, so
+          the paper's sentence is inaccurate.
+        params:
+          cvdd_kmeans_masked.n_clusters: 200
+          cvdd_kmeans_masked.cluster_method: l0
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.use_masking: true
+          cvdd_kmeans_masked.mask_variant: frequency_coverage
+          cvdd_kmeans_masked.mask_coverage: 0.95
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+          cvdd_kmeans_masked.epochs: 1
+
+      learned_mask_step1:
+        paper_name: "LearnedMask (stage 1 only)"
+        hydra_config: learned_mask
+        source: paper+code
+        sae_variant: learnedmask
+        note: >-
+          This IS the Table-1 LearnedMask-LoRA cell for GPT-oss: the paper
+          disables stage 2 on this model because LoRA costs 0.101 AUROC here.
+          min_cluster_size is written out explicitly: the published run left
+          it unset and so took the method YAML's 100. The paper's prose says
+          50.
+        params:
+          learned_mask.n_clusters: 100
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.min_cluster_size: 100
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.train_decoder: true
+          learned_mask.logit_init: 0.5
+          learned_mask.use_clustering_cache: false
+          learned_mask.lambda_candidates:
+            [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2, 3.0e-2, 1.0e-1]
+
+  # ==========================================================================
+  # Gemma 4 26B -- RELEASED. One SAE encoder for every method.
+  # ==========================================================================
+  gemma4_26b:
+    paper_name: "Gemma 4 26B"
+    released: true
+    methods:
+
+      mahalanobis:
+        paper_name: Mahalanobis
+        hydra_config: mahalanobis
+        source: paper+code
+        params:
+          mahalanobis.regularization: 1.0e-5
+          mahalanobis.score_type: sigmoid
+
+      gmm:
+        paper_name: GMM
+        hydra_config: gmm
+        source: paper+code
+        params:
+          gmm.n_components: 100
+          gmm.init_method: random
+          gmm.score_normalization: sigmoid
+
+      one_class_svm:
+        paper_name: One-Class SVM
+        hydra_config: one_class_svm
+        source: paper+code
+        note: >-
+          lr is the value the published run used; the paper does not name
+          an OC-SVM learning rate.
+        params:
+          one_class_svm.nu: 0.1
+          one_class_svm.gamma: 0.01
+          one_class_svm.kernel: rbf
+          one_class_svm.lr: 1.0e-3
+
+      deep_svdd:
+        paper_name: Deep SVDD
+        hydra_config: deep_svdd
+        source: paper+code
+        params:
+          deep_svdd.rep_dim: 128
+          deep_svdd.nu: 0.1
+          deep_svdd.lr: 1.0e-4
+
+      cvdd:
+        paper_name: CVDD
+        hydra_config: cvdd
+        source: paper+code
+        sae_variant: null
+        params:
+          cvdd.n_contexts: 500
+          cvdd.ortho_weight: 1.0e-4
+          cvdd.use_pretrained_encoder: false
+
+      bce:
+        paper_name: BCE (supervised reference)
+        hydra_config: bce
+        source: code
+        sae_variant: both
+        note: See the gpt_oss_20b BCE entry.
+        params:
+          bce.use_pretrained_encoder: true
+          bce.epochs: 50
+          bce.lr: 1.0e-4
+
+      cvdd_km_global_mask:
+        paper_name: FreqMask-KM
+        hydra_config: cvdd_kmeans_masked
+        source: paper+code
+        sae_variant: both
+        params:
+          cvdd_kmeans_masked.n_clusters: 50
+          cvdd_kmeans_masked.k_mask: 25
+          cvdd_kmeans_masked.mask_coverage: 0.9
+          cvdd_kmeans_masked.global_mask: true
+          cvdd_kmeans_masked.use_masking: true
+          cvdd_kmeans_masked.mask_variant: top_k
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      cvdd_km_raw_no_mask:
+        paper_name: "KMeans on raw activations, no mask (ablation)"
+        hydra_config: cvdd_kmeans_masked
+        source: code
+        sae_variant: null
+        params:
+          cvdd_kmeans_masked.n_clusters: 50
+          cvdd_kmeans_masked.use_masking: false
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+          cvdd_kmeans_masked.use_pretrained_encoder: false
+          cvdd_kmeans_masked.identity_encoder: true
+          cvdd_kmeans_masked.health_check.enabled: false
+        sweep_params:
+          cvdd_kmeans_masked.distance_metric: "l1,l2"
+
+      cvdd_sae:
+        paper_name: "CVDD (SAE space)"
+        hydra_config: cvdd
+        source: code
+        sae_variant: both
+        params:
+          cvdd.n_contexts: 10
+          cvdd.ortho_weight: 1.0e-4
+          cvdd.use_pretrained_encoder: true
+
+      local_freqmask_km:
+        paper_name: "Local FreqMask-KM"
+        hydra_config: cvdd_kmeans_masked
+        source: code
+        sae_variant: both
+        note: See the gpt_oss_20b Local FreqMask-KM entry.
+        params:
+          cvdd_kmeans_masked.n_clusters: 50
+          cvdd_kmeans_masked.cluster_method: l0
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.use_masking: true
+          cvdd_kmeans_masked.mask_variant: frequency_coverage
+          cvdd_kmeans_masked.mask_coverage: 0.95
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+          cvdd_kmeans_masked.epochs: 1
+
+      cvdd_km_no_mask:
+        paper_name: "FreqMask-KM with the mask disabled"
+        hydra_config: cvdd_kmeans_masked
+        source: paper
+        sae_variant: both
+        note: >-
+          The paper's published no-mask cell (tab:mask-ablation, full sweep in
+          tab:freq-abl-nomask) gives the no-mask condition its OWN best N
+          rather than reusing the masked configuration's, so N here is that
+          per-model best, not FreqMask-KM's N. The published sweep was N in
+          {10, 25, 50, 100, 200, 500}; pass it as a --multirun axis to
+          reproduce the whole row.
+        params:
+          cvdd_kmeans_masked.n_clusters: 50
+          cvdd_kmeans_masked.use_masking: false
+          cvdd_kmeans_masked.distance_metric: l1
+          cvdd_kmeans_masked.cluster_in_encoded_space: true
+          cvdd_kmeans_masked.fixed_centers: true
+
+      learned_mask_step1:
+        paper_name: "LearnedMask (stage 1)"
+        hydra_config: learned_mask
+        source: paper+code
+        sae_variant: both
+        note: >-
+          Stage 1 alone is NOT the reported cell for Gemma: the Table-1
+          LearnedMask-LoRA number uses stage 2 as well (0.904 against 0.853).
+          min_cluster_size is written out explicitly: the published run left
+          it unset and so took the method YAML's 100. The paper's prose says
+          50.
+        params:
+          learned_mask.n_clusters: 100
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.min_cluster_size: 100
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.train_decoder: true
+          learned_mask.logit_init: 0.5
+          learned_mask.use_clustering_cache: false
+          learned_mask.lambda_candidates:
+            [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3, 1.0e-2, 3.0e-2, 1.0e-1]
+
+      learned_mask_lora:
+        paper_name: LearnedMask-LoRA
+        hydra_config: learned_mask_lora
+        source: paper
+        sae_variant: both
+        note: >-
+          The Table-1 LearnedMask-LoRA cell for Gemma is stage 1 + stage 2.
+          Rank schedule {2,4,8} keyed to cluster size, 30 epochs at lr 1e-3,
+          LoRA sparsity weight 1e-3, minimum cluster size 50 -- all stated in
+          the paper.
+        params:
+          learned_mask.n_clusters: 100
+          learned_mask.cluster_method: cosine_binary
+          learned_mask.min_cluster_size: 100
+          learned_mask.mask_type: binary_ste
+          learned_mask.residual_norm: whitened
+          learned_mask.shrinkage_alpha: 0.3
+          learned_mask.train_decoder: true
+          learned_mask.logit_init: 0.5
+          learned_mask_lora.lora_rank_schedule: {small: 2, medium: 4, large: 8}
+          learned_mask_lora.lora_epochs: 30
+          learned_mask_lora.lora_lr: 1.0e-3
+          learned_mask_lora.lora_sparsity_lambda: 1.0e-3
+          learned_mask_lora.lora_min_cluster_size: 50
+          learned_mask_lora.scoring_method: l2_norm

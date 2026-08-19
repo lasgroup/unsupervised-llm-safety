@@ -1,0 +1,81 @@
+# Deep SVDD baseline configuration
+defaults:
+  - _self_
+
+model_path: null
+save_model: true # Whether to save the trained Deep SVDD model
+
+# --- Tuned defaults ---------------------------------------------------------
+# Before anything is fitted, run_anodet_analysis writes the paper's tuned
+# values for (model_key, tuned_method) from exp_configs/best_hyperparameters.yaml
+# over the defaults in this file. An explicit command-line override still wins;
+# the order is  CLI override > best_hyperparameters.yaml > this file.
+# Every value applied is logged with a `[tuned-defaults]` prefix.
+#
+# `tuned_method` is the *virtual* algorithm name, because one config file backs
+# several published methods. See the naming table in best_hyperparameters.yaml.
+use_tuned_defaults: true
+tuned_method: deep_svdd
+
+# Baseline method configuration
+method: "deep_svdd"
+deep_svdd:
+  objective: "one-class"  # or "soft-boundary"
+  nu: 0.2                 # For soft-boundary objective
+  rep_dim: 128            # Representation dimension
+  n_epochs: 100           # Training epochs
+  lr: 0.0001              # Learning rate
+  weight_decay: 1e-6      # L2 regularization
+  batch_size: 256         # Batch size for training
+  lr_milestones: [50]     # Learning rate schedule (reduce by 10x at these epochs)
+  device: "cuda"          # Device for training
+  seed: 42                # Random seed
+
+  # Autoencoder pretraining
+  pretrain: true          # Whether to use autoencoder pretraining
+  ae_n_epochs: 100        # Autoencoder training epochs
+  ae_lr: 0.001            # Autoencoder learning rate
+  ae_weight_decay: 1e-6   # Autoencoder L2 regularization
+
+# Data processing
+use_centralized_datasets: true  # Use dataset registry
+
+# Multi-adversarial configuration
+auto_discover_adversarial: true
+model_key: ???
+use_last_token: true  # If true, use per-turn last-token data
+use_generation: false  # If true, use per-token generation data for IID training
+use_complex_data: true  # If true, add safe OOD/ADV data to IID training
+# Set at runtime from dataset_registry.get_adversarial_base_path(), which is
+# rooted on $SAP_ACTIVATION_ROOT and redirected by $SAP_HARMBENCH_BASE.
+# anodet_utils.resolve_dataset_configurations() overwrites whatever is written
+# here, so point $SAP_HARMBENCH_BASE elsewhere rather than editing this key.
+adversarial_base_path: null
+attack_filter: null  # Optional: filter specific attacks
+layer: null  # Optional: specific layer for adversarial data
+
+# Datasets configuration
+datasets:
+  # IID datasets (will be populated from registry if use_centralized_datasets=true)
+  iid:
+    - path: ???
+      name: "IID_Dataset1"
+      split: "test"
+
+  # OOD datasets (will be populated from registry if use_centralized_datasets=true)
+  ood:
+    - path: ???
+      name: "OOD_Dataset1"
+
+  # Adversarial datasets (auto-discovered if auto_discover_adversarial=true)
+  adversarial: []
+
+  # Benign generalization datasets (will be populated from registry if use_centralized_datasets=true)
+  benign_generalization: []
+
+# Threshold evaluation configuration
+holdout_ratio: 0.2  # Ratio of training data to use for holdout (for threshold determination)
+                    # Remaining training data is used for model training
+                    # Test splits are kept completely intact (100% used for evaluation)
+use_threshold_evaluation: true  # Whether to use holdout set for threshold determination
+                                # If false, no threshold-based metrics are computed

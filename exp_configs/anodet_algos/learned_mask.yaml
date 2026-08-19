@@ -1,0 +1,106 @@
+# Per-cluster learned sparse masks via SAE reconstruction
+defaults:
+  - _self_
+
+model_path: null
+save_model: true
+# --- Tuned defaults ---------------------------------------------------------
+# Before anything is fitted, run_anodet_analysis writes the paper's tuned
+# values for (model_key, tuned_method) from exp_configs/best_hyperparameters.yaml
+# over the defaults in this file. An explicit command-line override still wins;
+# the order is  CLI override > best_hyperparameters.yaml > this file.
+# Every value applied is logged with a `[tuned-defaults]` prefix.
+#
+# `tuned_method` is the *virtual* algorithm name, because one config file backs
+# several published methods. See the naming table in best_hyperparameters.yaml.
+use_tuned_defaults: true
+tuned_method: learned_mask_step1
+
+method: "learned_mask"
+
+learned_mask:
+  # Clustering (L0 in SAE space)
+  n_clusters: 1500
+  cluster_method: "l0"
+  outlier_threshold: 2.0
+  l0_filter: 2.0
+  min_cluster_size: 100        # merge clusters with fewer safe samples (0=disabled)
+  max_union_size: 500          # max union-of-support after merge
+  use_clustering_cache: false  # true = load pre-computed clustering (consistent, faster)
+
+  # Clustering-basin controls (FAISS KMeans on the cosine_binary/l0 path, and
+  # the union-split bisection). With the defaults below no seed= is passed to
+  # faiss.Kmeans, which then uses FAISS random init on the GPU. The anodet
+  # `seed` below does not reach FAISS, and omitting seed= is not the same as
+  # unseeded: FAISS falls back to its own constant cp.seed=1234. Set these
+  # only when you deliberately want to control the k-means basin, and set
+  # cluster_on_cpu=true for bit-determinism -- FAISS GPU k-means is not
+  # order-deterministic even when seeded.
+  cluster_seed: null            # null = no seed= argument. int = seeded.
+  cluster_init: "faiss_random"  # "faiss_random" | "kmeans++" | "sklearn_ninit"
+  cluster_on_cpu: false         # true = force CPU k-means (bit-deterministic)
+
+  # Mask training
+  mask_type: "continuous"       # "continuous" or "binary_ste"
+  residual_norm: "l2"          # "l1", "l2", or "whitened"
+  sparsity_weighting: "uniform"  # "uniform" or "variance" (per-feature p*(1-p) weight)
+  # Whitened residual parameters (used when residual_norm="whitened")
+  whitened_mode: "diagonal"     # "diagonal" (per-dim variance) or "full" (LedoitWolf precision)
+  shrinkage_alpha: 0.3          # (1-a)*per_cluster + a*pooled variance (diagonal mode)
+  small_cluster_threshold: 10   # clusters smaller use pooled stats
+  variance_floor: 1.0e-6        # minimum variance per dimension (diagonal mode)
+  lambda_sparsity: 0.01       # initial; overridden by calibration
+  lambda_candidates: [1e-2, 3e-2, 1e-1, 3e-1, 1e0, 3e0, 1e1]
+  n_epochs: 50
+  lr: 0.01
+  batch_size: 256
+  sparsity_target: 100
+  train_decoder: false            # jointly train decoder with masks
+  per_cluster_decoder: false      # true = separate decoder per cluster (more memory)
+  decoder_lr: 1.0e-4              # decoder learning rate (lower than mask lr)
+  logit_init: 1.0                 # STE logit initialization (sigmoid(1.0)~0.73)
+
+  # Global mask: one mask for all clusters instead of per-cluster
+  global_mask: false
+
+  # Scoring method override
+  scoring_method: "l2_norm"          # "l2_norm" (default), "noise_lr"
+  noise_lr_min_cluster_size: 50      # clusters below this fall back
+
+  # Device / infra
+  device: "cuda"
+  seed: 42
+  analysis_batch_size: 256
+
+# Data processing
+use_centralized_datasets: true
+
+# Multi-adversarial datasets
+auto_discover_adversarial: true
+model_key: ???
+use_last_token: true
+use_generation: false
+use_complex_data: true
+# Set at runtime from dataset_registry.get_adversarial_base_path(), which is
+# rooted on $SAP_ACTIVATION_ROOT and redirected by $SAP_HARMBENCH_BASE.
+# anodet_utils.resolve_dataset_configurations() overwrites whatever is written
+# here, so point $SAP_HARMBENCH_BASE elsewhere rather than editing this key.
+adversarial_base_path: null
+attack_filter: null
+layer: null
+
+# Datasets configuration
+datasets:
+  iid:
+    - path: ???
+      name: "IID_Dataset1"
+      split: "test"
+  ood:
+    - path: ???
+      name: "OOD_Dataset1"
+  adversarial: []
+  benign_generalization: []
+
+# Threshold evaluation
+holdout_ratio: 0.2
+use_threshold_evaluation: true

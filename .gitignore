@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Cached representations. None ship with this code; see docs/GETTING_STARTED.md
+# section 12 for what is and is not included.
+activation_data/
+
+# Hydra run output (see $SAP_OUTPUT_ROOT in docs/GETTING_STARTED.md)
+outputs/
+multirun/
+
+# Editors
+.vscode/
+.idea/
+*.code-workspace
+
+# Deliberately no blanket `*.csv` rule: `reference_scores/expected/table1.csv`
+# is the reference table `compute_metrics.py` checks against, and is source
+# rather than output. Excluding it would not fail loudly -- the check would
+# report every cell as missing, or a reader would regenerate the table from
+# their own run and it would then pass against itself.
+
+# Internal working notes, run logs and job ledgers. These are records of this
+# project's own experiments, not part of the public release.
+.claude/

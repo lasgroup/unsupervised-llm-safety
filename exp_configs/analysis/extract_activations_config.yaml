@@ -1,0 +1,41 @@
+# Configuration for extracting activations from language models
+defaults:
+  - _self_
+
+# Model selection (required). Any model key known to
+# unsupervised_llm_safety.data.dataset_registry; the models the paper
+# released are qwen3_8b, gpt_oss_20b and gemma4_26b.
+model_key: "qwen2_1.5b"
+
+# Model configuration (device settings only)
+model:
+  device_map: "auto"  # For CUDA devices
+
+# Dataset configuration
+dataset:
+  name: "toxigen/toxigen-data"
+  subset: "train"
+  split: "train"
+  max_samples: 1000  # -1 for all samples
+  text_column: "text"  # Column name containing the text
+
+# Extraction configuration
+extraction:
+  layer_index: 20
+  output_path: "./data/toxigen/qwen2-1.5b_layer20.pth"
+  save_metadata: true
+
+# Memory management
+memory:
+  initial_batch_size: 8
+  min_batch_size: 1
+  reduce_factor: 0.5  # Reduce batch size by this factor on OOM
+  gc_frequency: 100  # Run garbage collection every N batches
+
+# Logging
+seed: 42
+verbose: true
+
+# Run and sweep directories come from exp_configs/config.yaml. Do not add a
+# `hydra:` block here: this file is composed into the `analysis` package, so
+# the key would land at `analysis.hydra` and Hydra would never read it.

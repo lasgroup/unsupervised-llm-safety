@@ -1,0 +1,9 @@
+# Domain configuration: Common Sense Safety
+# Traditional LLM safety datasets (harmful prompts, jailbreaks, toxic content)
+#
+# IID datasets: GSM8K, MathSFT40K, HumanEval, MBPP, Alpaca, MTBENCH, MMLU, etc.
+# OOD datasets: BeaverTails, ToxiGen
+# Adversarial: HarmBench attacks
+
+name: "common_sense_safety"
+

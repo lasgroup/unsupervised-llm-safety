@@ -1,0 +1,52 @@
+# Configuration for encoder training (the sparse autoencoder / "SAE").
+#
+# Entry point:  src/unsupervised_llm_safety/scripts/train_encoder.py
+# Example run:  scripts/iid/train_sae.sh
+#
+# The `- /model: autoencoder` default below pulls in exp_configs/model/
+# autoencoder.yaml, whose `_target_` is the class `common/train_utils.py:
+# create_model` instantiates. train_encoder.py reads its model config from
+# `iid.model`, so a run also needs `model@iid.model=autoencoder` on the command
+# line (see the example script) -- the absolute `/model` default here only
+# populates the top-level `model` node.
+#
+# Nothing in this file is a path. Where the training data comes from is decided
+# entirely by `unsupervised_llm_safety.data.dataset_registry` via `model_key`
+# below, rooted on $SAP_ACTIVATION_ROOT; where output lands is decided by
+# $SAP_OUTPUT_ROOT through exp_configs/config.yaml.
+#
+# No `hydra.launcher` block is configured, so `--multirun` runs the sweep
+# sequentially on the local machine -- correct, but slow for a multi-point
+# grid. See the note at the bottom of exp_configs/config.yaml for how to add
+# a launcher of your own.
+defaults:
+  - /model: autoencoder
+  - _self_
+
+seed: 42
+batch_size: 32
+num_epochs: 1
+
+# Model key (required for dataset registry). The released models are
+# gpt_oss_20b, gemma4_26b and qwen3_8b; this default is one of the earlier
+# models the paper also covers, whose activations this code does not ship, so
+# override it on the command line.
+model_key: "qwen2_1.5b"
+
+# Which fraction of each registry dataset to load. WHICH datasets are
+# loaded is decided by `model_key` through `dataset_registry`, never
+# from here.
+datasets:
+  iid:
+    train_ratio: 1.0
+    # Passed to the loader, but the encoder trains on the IID train split
+    # only, so the test fraction never reaches the optimizer.
+    test_ratio: 1.0
+
+# Training configuration
+training:
+  train_split_ratio: 0.8
+  learning_rate: 1e-3
+
+# Run and sweep directories are inherited from exp_configs/config.yaml, which
+# roots them on $SAP_OUTPUT_ROOT; do not add a `hydra:` block here.

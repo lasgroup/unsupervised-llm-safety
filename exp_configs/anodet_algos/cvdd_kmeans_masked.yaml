@@ -1,0 +1,138 @@
+# CVDD KMeans Masked: KMeans clustering on raw inputs with masked L1 distance
+defaults:
+  - _self_
+
+model_path: null
+save_model: true # Whether to save the trained CVDD KMeans Masked model
+
+# --- Tuned defaults ---------------------------------------------------------
+# Before anything is fitted, run_anodet_analysis writes the paper's tuned
+# values for (model_key, tuned_method) from exp_configs/best_hyperparameters.yaml
+# over the defaults in this file. An explicit command-line override still wins;
+# the order is  CLI override > best_hyperparameters.yaml > this file.
+# Every value applied is logged with a `[tuned-defaults]` prefix.
+#
+# `tuned_method` is the *virtual* algorithm name, because one config file backs
+# several published methods. See the naming table in best_hyperparameters.yaml.
+use_tuned_defaults: true
+tuned_method: cvdd_km_global_mask
+
+# Baseline method configuration
+method: "cvdd_kmeans_masked"
+cvdd_kmeans_masked:
+  # Clustering and masking
+  n_clusters: 3        # Number of KMeans clusters on raw inputs
+  k_mask: 100          # Number of top-k firing neurons to keep in mask
+  firing_threshold: 0  # Threshold for considering a neuron as firing (z > threshold)
+  analysis_output_dir: "./cvdd_kmeans_analysis/"  # Directory to save firing pattern plots
+  cluster_in_encoded_space: false  # If true, cluster in encoded space instead of raw inputs (ablation study)
+
+  # Architecture
+  rep_dim: 32          # Representation dimension (only used if no pretrained_encoder)
+  use_pretrained_encoder: true  # Whether to use a pretrained encoder from model_path
+  identity_encoder: false  # If true, use nn.Identity() encoder (cluster/score in RAW activation space; E3 ablation)
+
+  # Training
+  epochs: 50           # Training epochs
+  lr: 0.001            # Learning rate
+  batch_size: 1024     # Batch size for training
+
+  # CVDD-specific
+  fixed_centers: false # Keep centers fixed after initialization
+
+  # Clustering method
+  cluster_method: "default"  # "default" (FAISS L2), "l0" (binary Hamming), "cosine_binary" (binary Ochiai), or "l1" (k-medians, L1 + per-feature median centroids)
+
+  # Ablation flags
+  distance_metric: "l1"  # "l1", "l2", "hamming", "typicality", or "mahalanobis"
+  use_masking: true      # If false, mask is all ones (no masking)
+  mask_variant: "top_k"  # "top_k" (fixed k) or "frequency_coverage" (variable-size per cluster)
+  mask_coverage: 0.9     # Coverage threshold for frequency_coverage mask variant (0.8, 0.9, 0.95)
+  global_mask: false    # If true, use one global mask (pooled firing freq) for all clusters
+  cluster_in_masked_space: false  # If true, apply global mask BEFORE clustering (requires global_mask=true)
+  score_normalization: "percentile_train"  # "percentile_train" or "minmax_test"
+  l1_feature_penalty: 0.0  # L1 penalty on SAE activations during training (0=disabled)
+  train_encoder: false  # If true, train encoder even with cluster_in_encoded_space (variance shrinkage)
+  outlier_threshold: 0.0  # Split clusters with union_support > T*median (0=disabled, try 2.0)
+  l0_filter: 0.0  # Filter samples with L0 > T*median before L0 clustering (0=disabled, try 2.0)
+  min_cluster_size: 0  # Merge clusters with fewer safe samples (0=disabled)
+  max_union_size: 500  # Max union-of-support after merge
+  typicality_temperature: 1.0  # Softmax temperature for typicality scoring (Step 4)
+  mahalanobis_reg: 0.001  # Covariance regularization for per-cluster Mahalanobis (only used with distance_metric=mahalanobis)
+  mahalanobis_diag: false  # If true, use diagonal covariance (saves ~1000x memory for precision matrices)
+  mahalanobis_min_across_clusters: false  # If true, take min distance across all clusters; if false, use assigned cluster
+
+  # System
+  device: "cuda"       # Device for training
+  seed: 42             # Random seed (torch/numpy global; does NOT reach FAISS)
+
+  # Clustering-basin controls (FAISS KMeans on the default path). With the
+  # defaults below no seed= is passed to faiss.Kmeans, which then uses FAISS
+  # random init on the GPU. Set these only when you deliberately want to
+  # control or vary the k-means basin.
+  cluster_seed: null            # null = no seed= argument. int = seeded.
+  cluster_init: "faiss_random"  # "faiss_random" | "kmeans++" | "sklearn_ninit"
+  cluster_on_cpu: false         # true = force CPU k-means (bit-deterministic)
+
+  # Scoring
+  analysis_batch_size: 32           # Batch size for scoring/analysis to control memory
+
+  # Health-check diagnostics (runs automatically after training if save_model=true)
+  health_check:
+    enabled: true
+    batch_size: 256  # Batch size for diagnostic computations
+    thresholds:
+      dead_neuron_pct_warn: 0.3
+      dead_neuron_pct_fail: 0.5
+      l0_drop_pct_warn: 0.2
+      l0_drop_pct_fail: 0.4
+      cluster_variance_increase_warn: 0.5
+      cluster_variance_increase_fail: 1.0
+      inter_cluster_distance_drop_warn: 0.5
+      inter_cluster_distance_drop_fail: 0.75
+      activation_concentration_warn: 0.8
+      activation_concentration_fail: 0.95
+
+# Data processing
+use_centralized_datasets: true  # Use dataset registry
+
+# Multi-adversarial configuration (same as other baselines)
+auto_discover_adversarial: true
+model_key: ???
+use_last_token: true  # If true, use per-turn last-token data
+use_generation: false  # If true, use per-token generation data for IID training
+use_complex_data: true  # If true, add safe OOD/ADV data to IID training
+# Set at runtime from dataset_registry.get_adversarial_base_path(), which is
+# rooted on $SAP_ACTIVATION_ROOT and redirected by $SAP_HARMBENCH_BASE.
+# anodet_utils.resolve_dataset_configurations() overwrites whatever is written
+# here, so point $SAP_HARMBENCH_BASE elsewhere rather than editing this key.
+adversarial_base_path: null
+attack_filter: null  # Optional: filter specific attacks
+layer: null  # Optional: specific layer for adversarial data
+
+# Datasets configuration
+datasets:
+  # IID datasets (will be populated from registry if use_centralized_datasets=true)
+  iid:
+    - path: ???
+      name: "IID_Dataset1"
+      split: "test"
+
+  # OOD datasets (will be populated from registry if use_centralized_datasets=true)
+  ood:
+    - path: ???
+      name: "OOD_Dataset1"
+
+  # Adversarial datasets (auto-discovered if auto_discover_adversarial=true)
+  adversarial: []
+
+  # Benign generalization datasets (will be populated from registry if use_centralized_datasets=true)
+  benign_generalization: []
+
+# Threshold evaluation configuration
+max_iid_samples: 0  # If > 0, limit total IID training samples (tokens). 0 = no limit.
+holdout_ratio: 0.2  # Ratio of training data to use for holdout (for threshold determination)
+                    # Remaining training data is used for model training
+                    # Test splits are kept completely intact (100% used for evaluation)
+use_threshold_evaluation: true  # Whether to use holdout set for threshold determination
+                                # If false, no threshold-based metrics are computed

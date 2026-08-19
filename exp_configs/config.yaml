@@ -1,0 +1,68 @@
+# exp_configs/config.yaml
+# Base Hydra configuration.
+#
+# This config runs locally, on whatever machine you are on, with no scheduler
+# assumed: Hydra's basic launcher is the default, and no GPU type, partition
+# or account is pinned, because none of that is portable. To run sweeps on
+# your own SLURM cluster, install `hydra-submitit-launcher` and add your own
+# launcher block -- see the comment at the bottom of this file.
+#
+# Output locations are driven by one environment variable:
+#
+#   SAP_OUTPUT_ROOT   where run and sweep directories are created.
+#                     Default: ./outputs relative to the invoking directory.
+#
+# Activation/artifact locations are NOT configured here; they come from
+# `unsupervised_llm_safety.data.dataset_registry`, which is rooted on
+# $SAP_ACTIVATION_ROOT. See docs/GETTING_STARTED.md for the full list.
+defaults:
+  - _self_
+  - optional domain: common_sense_safety
+  - optional analysis: null
+  - optional evaluation: null
+  - optional iid: null
+  - optional distance_analysis: null
+  - optional anodet_algos: null
+
+# Global parameters
+exp_type: null
+exp_ident: null
+use_last_token: true  # If true, use per-turn last-token data instead of per-token
+use_generation: false  # If true, use per-token generation data for IID training
+use_complex_data: true  # If true, add safe OOD/ADV data to IID training
+
+hydra:
+  job:
+    chdir: True
+  run:
+    dir: ${oc.env:SAP_OUTPUT_ROOT,outputs}/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
+  sweep:
+    dir: ${oc.env:SAP_OUTPUT_ROOT,outputs}/multirun/${exp_type}/${now:%Y-%m-%d}/${exp_ident}-${now:%H-%M-%S}
+
+# --- Running sweeps on SLURM -------------------------------------------------
+#
+# `pip install hydra-submitit-launcher`, then add to `defaults` above:
+#
+#     - override hydra/launcher: submitit_slurm
+#
+# and under `hydra:` add a launcher block along these lines, substituting your
+# own partition/account/GPU:
+#
+#     launcher:
+#       submitit_folder: ${hydra.sweep.dir}/.submitit/%j
+#       timeout_min: 240
+#       cpus_per_task: 1
+#       tasks_per_node: 1
+#       nodes: 1
+#       name: ${exp_ident}
+#       mem_per_cpu: 128G
+#       _target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
+#       additional_parameters: {"gpus": "<your-gpu-type>:1", "account": "<your-account>"}
+#
+# One scheduling note, not specific to any one cluster: SLURM often routes
+# jobs to a partition by *requested* walltime, so asking for more time than
+# you need can put you in a far more contended queue. Measured runtimes here
+# are well under an hour per job (FreqMask-KM ~8 min, LearnedMask stage-1
+# ~44 min, worst observed 1:17:31), so a 4-hour limit keeps ~3x headroom while
+# staying in the short queue. A job that genuinely needs longer then fails as
+# TIMEOUT, which is visible, rather than being cut short silently.

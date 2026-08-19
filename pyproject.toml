@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unsupervised_llm_safety"
+version = "0.1.0"
+description = "Unsupervised anomaly detection on LLM hidden states for safety classification"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+# Base install = exactly what `reference_scores/compute_metrics.py` needs. It
+# recomputes every reported cell from the released per-sample scores and
+# imports only `unsupervised_llm_safety.analysis.anomaly_metrics`, whose entire
+# dependency surface is numpy + scikit-learn. It runs on a laptop CPU in
+# seconds. Anything heavier is an extra, so the default install stays small
+# enough that checking the reported table does not require a GPU stack.
+dependencies = [
+    "numpy>=1.21",
+    "scikit-learn>=1.0",
+]
+
+[project.optional-dependencies]
+# Training SAEs, fitting detectors, and loading a saved detector checkpoint to
+# re-score activations through it. This is what pulls in the deep-learning
+# stack.
+#   torch        - loading any saved detector checkpoint
+#   omegaconf    - DictConfig is the config type threaded through the algos
+#   hydra-core   - run_anodet_eval exposes a @hydra.main CLI
+#   faiss-cpu    - k-means for the FreqMask-KM / LearnedMask cluster step.
+#                  Imported under try/except, so importing the package works
+#                  without it, but fitting or re-clustering does not.
+#                  Substitute faiss-gpu if you want it on the GPU.
+#   scipy        - LearnedMask-LoRA reports scipy.stats summaries
+#   tqdm         - progress bars in the scoring loops
+#   matplotlib   - the diagnostics/health-report plots
+checkpoints = [
+    "torch>=1.13",
+    "omegaconf>=2.2",
+    "hydra-core>=1.2",
+    "faiss-cpu>=1.7",
+    "scipy>=1.7",
+    "tqdm>=4.60",
+    "matplotlib>=3.5",
+]
+# Extracting your own representations with
+# `unsupervised_llm_safety.scripts.activations.extract_activations`. No cached
+# representations ship with this code, so anything that fits or evaluates a
+# detector needs this group first (see
+# scripts/extract_activations/by_dataset/toxigen.sh).
+#   transformers - AutoModelForCausalLM / AutoTokenizer, and the chat template
+#   datasets     - `load_dataset`, in data/dataset_processors.py
+#   accelerate   - required by `device_map="auto"`, the default in
+#                  exp_configs/analysis/extract_activations_config.yaml
+#   psutil       - memory reporting in common/device_utils.py, imported by the
+#                  per-token generation path
+# torch / hydra-core / omegaconf / tqdm come from [checkpoints], which this
+# group therefore includes rather than restating.
+extract = [
+    "unsupervised_llm_safety[checkpoints]",
+    "transformers>=4.40",
+    "datasets>=2.14",
+    "accelerate>=0.26",
+    "psutil>=5.9",
+]
+all = [
+    "unsupervised_llm_safety[checkpoints,extract]",
+]
+dev = [
+    "pytest>=7.0",
+    "black>=22.0",
+    "isort>=5.0",
+    "flake8>=4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["unsupervised_llm_safety*"]
+# The package uses implicit namespace packages (no __init__.py at the
+# `unsupervised_llm_safety` root or in most subpackages), so namespace
+# discovery has to be enabled: without it setuptools finds no packages at all.
+namespaces = true
+
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+line_length = 79
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

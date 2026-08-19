@@ -1,0 +1,22 @@
+# Autoencoder model configuration
+_target_: unsupervised_llm_safety.models.autoencoder.Autoencoder
+
+# Core parameters
+input_dim: ???  # Will be set by create_model
+feature_dim: 128  # Bottleneck dimension
+encoder_hidden_dims: []
+decoder_hidden_dims: []
+
+# Architecture options
+activation: relu  # Options: relu, tanh, gelu
+use_batch_norm: false
+dropout_rate: 0.0
+
+# Sparsity regularization
+sparsity_weight: 0.01  # Weight for sparsity penalty
+sparsity_target: 0.0   # If > 0, use KL divergence sparsity instead of L1
+                       # Typical values: 0.01-0.1 for KL sparsity
+
+# Contrastive regularization
+contrastive_weight: 0.0  # Weight for contrastive loss (0.0 = disabled)
+                         # Penalizes pairwise cosine similarity in batch

@@ -1,0 +1,67 @@
+# Mahalanobis distance-based OOD detection baseline configuration
+defaults:
+  - _self_
+
+model_path: null
+save_model: true # Whether to save the trained Mahalanobis model
+
+# --- Tuned defaults ---------------------------------------------------------
+# Before anything is fitted, run_anodet_analysis writes the paper's tuned
+# values for (model_key, tuned_method) from exp_configs/best_hyperparameters.yaml
+# over the defaults in this file. An explicit command-line override still wins;
+# the order is  CLI override > best_hyperparameters.yaml > this file.
+# Every value applied is logged with a `[tuned-defaults]` prefix.
+#
+# `tuned_method` is the *virtual* algorithm name, because one config file backs
+# several published methods. See the naming table in best_hyperparameters.yaml.
+use_tuned_defaults: true
+tuned_method: mahalanobis
+
+# Baseline method configuration
+method: "mahalanobis"
+mahalanobis:
+  # Core parameters
+  regularization: 1.0e-5         # Covariance regularization
+  score_type: "percentile"       # "percentile" (robust) or "sigmoid" (smooth)
+
+  # Memory efficiency
+  batch_size: 1024              # Batch size for scoring
+
+  # System
+  device: "cuda"                # Computation device
+  seed: 42                      # Random seed
+
+# Data processing
+use_centralized_datasets: true  # Use dataset registry
+
+# Multi-adversarial configuration
+auto_discover_adversarial: true
+model_key: ???
+use_last_token: true  # If true, use per-turn last-token data
+use_generation: false  # If true, use per-token generation data for IID training
+use_complex_data: true  # If true, add safe OOD/ADV data to IID training
+# Set at runtime from dataset_registry.get_adversarial_base_path(), which is
+# rooted on $SAP_ACTIVATION_ROOT and redirected by $SAP_HARMBENCH_BASE.
+# anodet_utils.resolve_dataset_configurations() overwrites whatever is written
+# here, so point $SAP_HARMBENCH_BASE elsewhere rather than editing this key.
+adversarial_base_path: null
+attack_filter: null
+layer: null
+
+# Dataset configuration
+datasets:
+  iid:
+    - path: ???
+      name: "IID_Dataset1"
+      split: "test"
+  ood:
+    - path: ???
+      name: "OOD_Dataset1"
+  adversarial: []
+
+  # Benign generalization datasets (will be populated from registry if use_centralized_datasets=true)
+  benign_generalization: []
+
+# Threshold evaluation configuration
+holdout_ratio: 0.2  # Ratio of training data to hold out (for threshold determination)
+use_threshold_evaluation: true  # Whether to use holdout set for threshold determination
